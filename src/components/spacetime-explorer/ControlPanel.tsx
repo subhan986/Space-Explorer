@@ -195,9 +195,9 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               <Settings2 className="mr-2 h-5 w-5" /> Object Management
             </AccordionTrigger>
             <AccordionContent className="pt-2 space-y-4">
-              <div className="flex space-x-2">
-                <Button size="sm" onClick={() => handleAddObjectClick('massive')} className="flex-1 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"><PlusCircle className="mr-2 h-4 w-4" /> Add Massive</Button>
-                <Button size="sm" onClick={() => handleAddObjectClick('orbiter')} className="flex-1 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"><PlusCircle className="mr-2 h-4 w-4" /> Add Orbiter</Button>
+              <div className="flex flex-col space-y-2">
+                <Button size="sm" onClick={() => handleAddObjectClick('massive')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"><PlusCircle className="mr-2 h-4 w-4" /> Add Massive</Button>
+                <Button size="sm" onClick={() => handleAddObjectClick('orbiter')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"><PlusCircle className="mr-2 h-4 w-4" /> Add Orbiter</Button>
               </div>
 
               {(editingObjectType || selectedObject) && (
@@ -345,3 +345,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 };
 
 export default ControlPanel;
+
+
+    
