@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -43,54 +44,21 @@ body {
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
 
-    /* Sidebar specific theme variables, aligned with the dark theme */
-    --sidebar-background: 0 0% 10%; /* Darker than main bg */
-    --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 220 43% 50%; /* Brighter primary for sidebar */
+    /* Sidebar specific theme variables - MODIFIED for image likeness */
+    --sidebar-background: 210 70% 55%; /* Brighter, medium blue from image */
+    --sidebar-foreground: 0 0% 98%; /* White/very light text on blue */
+    
+    --sidebar-primary: 220 60% 65%; /* A slightly lighter blue for primary actions within sidebar */
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 271 76% 60%; /* Brighter accent for sidebar */
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 271 76% 70%;
+    
+    --sidebar-accent: 0 0% 96%; /* Off-white/very light gray for selected items (like image) */
+    --sidebar-accent-foreground: 210 70% 35%; /* Darker blue text for on-accent (selected) items */
+    
+    --sidebar-border: 210 70% 45%; /* Border color related to the new sidebar blue */
+    --sidebar-ring: 210 70% 65%; /* Ring color related to the new sidebar blue */
+    --sidebar-muted-foreground: 0 0% 80%; 
+    --sidebar-destructive-foreground: 0 0% 98%;
   }
-
-  /* Optional: If a light theme is ever needed, it can be defined here */
-  /*
-  .light {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-  */
 }
 
 @layer base {
