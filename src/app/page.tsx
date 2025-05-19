@@ -77,7 +77,8 @@ export default function SpacetimeExplorerPage() {
             <SidebarTrigger className="md:hidden"> {/* Only show trigger on mobile if sidebar is collapsible off-canvas */}
                 <PanelLeft />
             </SidebarTrigger>
-            <h1 className="text-lg font-semibold text-foreground">3D Visualization Area</h1>
+            {/* Adjusted text size for better mobile display */}
+            <h1 className="text-md md:text-lg font-semibold text-foreground">3D Visualization Area</h1>
         </header>
         <main className="flex-1 overflow-hidden p-1 md:p-2">
             <SpaceTimeCanvas
@@ -93,3 +94,5 @@ export default function SpacetimeExplorerPage() {
     </SidebarProvider>
   );
 }
+
+    
