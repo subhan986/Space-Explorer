@@ -1,3 +1,4 @@
+
 export interface Vector3 {
   x: number;
   y: number;
@@ -14,17 +15,17 @@ export interface BaseObject {
   velocity: Vector3;
   radius: number; // For visual representation
   color: string; // Hex color string
+  mass: number; // All objects have a mass, can be 0 for tracer/massless particles
 }
 
 export interface MassiveObject extends BaseObject {
   type: 'massive';
-  mass: number;
+  // Mass is inherited. MassiveObjects typically have a larger default mass.
 }
 
 export interface OrbiterObject extends BaseObject {
   type: 'orbiter';
-  // Orbiters might have a very small, fixed mass, or mass might be ignored for simplicity
-  mass?: number; 
+  // Mass is inherited. OrbiterObjects typically have a smaller default mass, or 0 for tracers.
 }
 
 export type SceneObject = MassiveObject | OrbiterObject;

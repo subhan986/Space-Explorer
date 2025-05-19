@@ -1,3 +1,4 @@
+
 // src/components/spacetime-explorer/ObjectForm.tsx
 'use client';
 
@@ -13,8 +14,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import type { SceneObject, ObjectType } from '@/types/spacetime';
 import { HexColorPicker } from "react-colorful"; // Simple color picker
 
-const baseSchema = z.object({
+// All objects now have a mass property.
+const sceneObjectSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  mass: z.coerce.number().min(0, 'Mass cannot be negative'),
   positionX: z.coerce.number(),
   positionY: z.coerce.number(),
   positionZ: z.coerce.number(),
@@ -23,14 +26,6 @@ const baseSchema = z.object({
   velocityZ: z.coerce.number(),
   radius: z.coerce.number().min(0.1, 'Radius must be positive'),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color'),
-});
-
-const massiveObjectSchema = baseSchema.extend({
-  mass: z.coerce.number().min(0, 'Mass cannot be negative'),
-});
-
-const orbiterObjectSchema = baseSchema.extend({
-  // Orbiter mass is optional or fixed, not typically user-editable in this simplified model
 });
 
 interface ObjectFormProps {
@@ -48,13 +43,13 @@ const ObjectForm: React.FC<ObjectFormProps> = ({
   onCancel,
   submitButtonText = 'Save Object',
 }) => {
-  const schema = objectType === 'massive' ? massiveObjectSchema : orbiterObjectSchema;
-  type FormData = z.infer<typeof schema>;
+  type FormData = z.infer<typeof sceneObjectSchema>;
 
   const form = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(sceneObjectSchema),
     defaultValues: {
       name: initialData?.name || (objectType === 'massive' ? 'Star' : 'Planet'),
+      mass: initialData?.mass ?? (objectType === 'massive' ? 1000 : 1), // Default mass for massive vs orbiter
       positionX: initialData?.position?.x || 0,
       positionY: initialData?.position?.y || 0,
       positionZ: initialData?.position?.z || 0,
@@ -63,23 +58,39 @@ const ObjectForm: React.FC<ObjectFormProps> = ({
       velocityZ: initialData?.velocity?.z || 0,
       radius: initialData?.radius || (objectType === 'massive' ? 10 : 2),
       color: initialData?.color || (objectType === 'massive' ? '#FFD700' : '#00BFFF'),
-      ...(objectType === 'massive' && { mass: (initialData as any)?.mass || 1000 }),
     },
   });
+  
+  // Effect to reset form when initialData or objectType changes, especially for AI suggestions
+  React.useEffect(() => {
+    form.reset({
+      name: initialData?.name || (objectType === 'massive' ? 'Star' : 'Planet'),
+      mass: initialData?.mass ?? (objectType === 'massive' ? 1000 : 1),
+      positionX: initialData?.position?.x || 0,
+      positionY: initialData?.position?.y || 0,
+      positionZ: initialData?.position?.z || 0,
+      velocityX: initialData?.velocity?.x || 0,
+      velocityY: initialData?.velocity?.y || 0,
+      velocityZ: initialData?.velocity?.z || 0,
+      radius: initialData?.radius || (objectType === 'massive' ? 10 : 2),
+      color: initialData?.color || (objectType === 'massive' ? '#FFD700' : '#00BFFF'),
+    });
+  }, [initialData, objectType, form.reset, form]);
+
 
   const handleSubmit = (values: FormData) => {
     const transformedData: Partial<SceneObject> = {
       id: initialData?.id, // Preserve ID if editing
       type: objectType,
       name: values.name,
+      mass: values.mass, // Mass is now always included
       position: { x: values.positionX, y: values.positionY, z: values.positionZ },
       velocity: { x: values.velocityX, y: values.velocityY, z: values.velocityZ },
       radius: values.radius,
       color: values.color,
-      ...(objectType === 'massive' && { mass: (values as any).mass }),
     };
     onSubmit(transformedData);
-    if (!initialData) form.reset(); // Reset form if it was for adding a new object
+    if (!initialData?.id) form.reset(); // Reset form if it was for adding a new object
   };
 
   return (
@@ -97,19 +108,17 @@ const ObjectForm: React.FC<ObjectFormProps> = ({
           )}
         />
 
-        {objectType === 'massive' && (
-          <FormField
+        <FormField
             control={form.control}
             name="mass"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Mass</FormLabel>
-                <FormControl><Input type="number" placeholder="e.g., 1000" {...field} /></FormControl>
+                <FormControl><Input type="number" placeholder={objectType === 'massive' ? "e.g., 1000" : "e.g., 1 (0 for massless)"} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-        )}
 
         <Label className="text-sm font-medium">Initial Position (x, y, z)</Label>
         <div className="grid grid-cols-3 gap-2">
