@@ -196,8 +196,8 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
             </AccordionTrigger>
             <AccordionContent className="pt-2 space-y-4">
               <div className="flex space-x-2">
-                <Button onClick={() => handleAddObjectClick('massive')} className="flex-1 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"><PlusCircle className="mr-2 h-4 w-4" /> Add Massive</Button>
-                <Button onClick={() => handleAddObjectClick('orbiter')} className="flex-1 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"><PlusCircle className="mr-2 h-4 w-4" /> Add Orbiter</Button>
+                <Button size="sm" onClick={() => handleAddObjectClick('massive')} className="flex-1 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"><PlusCircle className="mr-2 h-4 w-4" /> Add Massive</Button>
+                <Button size="sm" onClick={() => handleAddObjectClick('orbiter')} className="flex-1 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"><PlusCircle className="mr-2 h-4 w-4" /> Add Orbiter</Button>
               </div>
 
               {(editingObjectType || selectedObject) && (
@@ -225,10 +225,10 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                 {props.objects.map(obj => (
                   <div key={obj.id}
                        className={`flex items-center justify-between p-2 rounded-md cursor-pointer 
-                                   hover:bg-sidebar-accent hover:text-sidebar-accent-foreground  /* Consistent hover */
+                                   hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
                                    ${props.selectedObjectId === obj.id 
                                      ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
-                                     : 'bg-sidebar-background text-sidebar-foreground hover:bg-opacity-75'}`} /* Use sidebar-background for unselected */
+                                     : 'bg-sidebar-background text-sidebar-foreground hover:bg-opacity-75'}`}
                        onClick={() => { props.onSelectObject(obj.id); setEditingObjectType(null); }}>
                     <span className="truncate" style={{color: props.selectedObjectId === obj.id ? 'hsl(var(--sidebar-accent-foreground))' : obj.color, fontWeight: props.selectedObjectId === obj.id ? 'bold' : 'normal'}}>{obj.name} ({obj.type}, M: {obj.mass.toFixed(1)})</span>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-sidebar-destructive-foreground hover:bg-destructive/30 flex-shrink-0" onClick={(e) => { e.stopPropagation(); props.onRemoveObject(obj.id); }}>
@@ -247,6 +247,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
             <AccordionContent className="pt-2 space-y-4">
               <div className="flex space-x-2">
                 <Button
+                  size="sm"
                   onClick={() => props.onSetSimulationStatus('running')}
                   disabled={props.simulationStatus === 'running'}
                   className="flex-1 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"
@@ -254,14 +255,15 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                   <Play className="mr-2 h-4 w-4" /> Start
                 </Button>
                 <Button
+                  size="sm"
                   onClick={() => props.onSetSimulationStatus('paused')}
                   disabled={props.simulationStatus !== 'running'}
-                  className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground" /* Using main accent for pause */
+                  className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground" 
                 >
                   <Pause className="mr-2 h-4 w-4" /> Pause
                 </Button>
               </div>
-              <Button onClick={props.onResetSimulation} variant="outline" className="w-full border-sidebar-primary text-sidebar-primary hover:bg-sidebar-primary/10"><SkipForward className="mr-2 h-4 w-4" /> Reset Simulation</Button>
+              <Button size="sm" onClick={props.onResetSimulation} variant="outline" className="w-full border-sidebar-primary text-sidebar-primary hover:bg-sidebar-primary/10"><SkipForward className="mr-2 h-4 w-4" /> Reset Simulation</Button>
 
               <div className="space-y-2">
                 <Label htmlFor="simSpeed" className="text-sidebar-foreground/80">Speed: {props.simulationSpeed.toFixed(1)}x</Label>
@@ -300,9 +302,10 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
             </AccordionTrigger>
             <AccordionContent className="pt-2 space-y-4">
               <Button
+                size="sm"
                 onClick={handleAISuggest}
                 disabled={isAISuggesting || !(editingObjectType || selectedObject)}
-                className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground" /* AI Suggest button styled like other primary actions */
+                className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"
               >
                 {isAISuggesting ? "Thinking..." : "Suggest Parameters"}
               </Button>

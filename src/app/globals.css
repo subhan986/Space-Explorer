@@ -44,20 +44,21 @@ body {
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
 
-    /* Sidebar specific theme variables - MODIFIED for image likeness */
-    --sidebar-background: 210 70% 55%; /* Brighter, medium blue from image */
-    --sidebar-foreground: 0 0% 98%; /* White/very light text on blue */
+    /* Sidebar specific theme variables - MODIFIED for "black" theme */
+    --sidebar-background: 0 0% 8%; /* Very dark gray, almost black */
+    --sidebar-foreground: 0 0% 90%; /* Light gray for text */
+
+    --sidebar-primary: 220 43% 41%; /* Using main theme primary - deep space blue */
+    --sidebar-primary-foreground: 0 0% 98%; /* White text on primary */
+
+    --sidebar-accent: 0 0% 15%; /* Slightly lighter dark gray for selected/active items */
+    --sidebar-accent-foreground: 0 0% 95%; /* Bright text on accent */
+
+    --sidebar-border: 0 0% 18%; /* Border for dark theme */
+    --sidebar-ring: 271 76% 65%; /* Ring color, can be main theme's accent or a specific sidebar ring */
     
-    --sidebar-primary: 220 60% 65%; /* A slightly lighter blue for primary actions within sidebar */
-    --sidebar-primary-foreground: 0 0% 98%;
-    
-    --sidebar-accent: 0 0% 96%; /* Off-white/very light gray for selected items (like image) */
-    --sidebar-accent-foreground: 210 70% 35%; /* Darker blue text for on-accent (selected) items */
-    
-    --sidebar-border: 210 70% 45%; /* Border color related to the new sidebar blue */
-    --sidebar-ring: 210 70% 65%; /* Ring color related to the new sidebar blue */
-    --sidebar-muted-foreground: 0 0% 80%; 
-    --sidebar-destructive-foreground: 0 0% 98%;
+    --sidebar-muted-foreground: 0 0% 60%; /* Muted text, consistent with main theme */
+    --sidebar-destructive-foreground: 0 0% 98%; /* Destructive text, consistent */
   }
 }
 
@@ -69,3 +70,4 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
