@@ -81,9 +81,15 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       }
 
       if (centralBody) {
-        const distance = (centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS) +
-                         DEFAULT_ORBITER_OBJECT_RADIUS +
-                         DEFAULT_ORBITAL_DISTANCE_OFFSET;
+        const actualCentralBodyRadius = centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS;
+        const actualOrbiterRadius = DEFAULT_ORBITER_OBJECT_RADIUS; // New orbiters start with default radius
+
+        // Calculate a dynamic clearance offset. It's the larger of a default offset
+        // or a factor of the central body's radius. This is the gap between surfaces.
+        const dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 1.0);
+
+        // Total distance from center of massive object to center of orbiter
+        const distance = actualCentralBodyRadius + actualOrbiterRadius + dynamicClearanceOffset;
 
         const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
         const centralBodyVel = centralBody.velocity || { x: 0, y: 0, z: 0 };
@@ -95,15 +101,20 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         };
 
         let orbitalSpeed = 0;
+        // Ensure centralBody.mass is positive and distance is positive for Math.sqrt
         if (centralBody.mass > 0 && distance > 0) {
            orbitalSpeed = Math.sqrt((G_CONSTANT * centralBody.mass) / distance);
         }
-        if (!isFinite(orbitalSpeed)) orbitalSpeed = 0;
+        // Check for NaN or Infinity, which can happen if G_CONSTANT or mass is very large,
+        // or if distance is zero (though the check above should prevent distance=0).
+        if (!isFinite(orbitalSpeed)) {
+          orbitalSpeed = 0; // Default to 0 if calculation is problematic
+        }
 
 
         baseInitialData.velocity = {
           x: centralBodyVel.x,
-          y: centralBodyVel.y, // Keep Y velocity aligned with central body
+          y: centralBodyVel.y, 
           z: centralBodyVel.z + orbitalSpeed, // Tangential velocity in Z for orbit in XZ plane
         };
       }
@@ -159,13 +170,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     if (!aiSuggestion) return;
 
     const baseData = formInitialData || selectedObject || {};
-    // Current AI only suggests scalar velocity.
-    // We will now apply this magnitude primarily to the Z velocity if it's an orbiter being set up for XZ plane orbit,
-    // or maintain existing YZ velocity components and adjust X.
-    // For simplicity, if user initiated AI for a new orbiter, it aligns with XZ plane logic.
-    // If editing an existing object, it's less clear how to distribute suggested scalar velocity.
-    // Let's apply it to the Z component for new orbiters, and mostly to X for others or if no clear plane.
-
     let newVelocity: Vector3;
     const currentVel = baseData.velocity || { x: 0, y: 0, z: 0 };
 
@@ -332,3 +336,5 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 };
 
 export default ControlPanel;
+
+    
