@@ -115,7 +115,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 
         baseInitialData.velocity = {
           x: centralBodyVel.x,
-          y: centralBodyVel.y, 
+          y: centralBodyVel.y,
           z: centralBodyVel.z + orbitalSpeed, // Tangential velocity in Z for orbit in XZ plane
         };
       }
@@ -155,7 +155,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         if (targetForAISuggestion.velocity) {
           const v = targetForAISuggestion.velocity;
           // Use magnitude of velocity for AI suggestion context
-          input.currentVelocity = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z); 
+          input.currentVelocity = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
         }
       }
 
@@ -186,7 +186,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     } else { // Existing object or new massive object, AI suggested scalar velocity is applied to X
       newVelocity = { x: aiSuggestion.suggestedVelocity, y: currentVel.y, z: currentVel.z };
     }
-    
+
     const suggestedData: Partial<SceneObject> = {
         ...baseData, // Spread existing data first
         mass: aiSuggestion.suggestedMass,
@@ -207,11 +207,11 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground rounded-lg shadow-lg overflow-hidden">
-      <div className="p-4"> {/* Added a wrapper for title and separator to control their padding independently */}
+      <div className="p-4">
         <h2 className="text-2xl font-semibold mb-4 text-sidebar-primary-foreground">Spacetime Explorer</h2>
         <Separator className="mb-4 bg-sidebar-border" />
       </div>
-      <ScrollArea className="flex-grow p-4 pt-0"> {/* Changed pr-2 to p-4, and pt-0 to avoid double padding with header */}
+      <ScrollArea className="flex-grow p-4 pt-0">
         <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4']} className="w-full">
           {/* Object Management */}
           <AccordionItem value="item-1">
@@ -229,7 +229,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                   <CardHeader>
                     <CardTitle>{editingObjectType ? `Add New ${editingObjectType === 'massive' ? 'Massive' : 'Orbiter'} Object` : `Edit: ${selectedObject?.name}`}</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-3 py-4 pt-0"> {/* Reduced horizontal padding */}
                     <ObjectForm
                       // Ensure key changes when we switch between adding new and editing existing, or type changes
                       key={selectedObject?.id || editingObjectType || 'new-object-form'}
@@ -246,14 +246,14 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               <Separator className="my-4 bg-sidebar-border" />
               <Label className="text-sidebar-foreground/80">Scene Objects:</Label>
               {props.objects.length === 0 && <p className="text-sm text-sidebar-muted-foreground">No objects in scene.</p>}
-              <div className="max-h-40 space-y-1">
+              <div className="max-h-40 space-y-1 overflow-y-auto"> {/* Added overflow-y-auto for safety */}
                 {props.objects.map(obj => (
                   <div key={obj.id}
                        className={`flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-sidebar-accent/80
                                    ${props.selectedObjectId === obj.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'bg-sidebar-accent/20'}`}
                        onClick={() => { props.onSelectObject(obj.id); setEditingObjectType(null); /* formInitialData will be set by useEffect */ }}>
                     <span className="truncate" style={{color: obj.color, fontWeight: props.selectedObjectId === obj.id ? 'bold' : 'normal'}}>{obj.name} ({obj.type}, M: {obj.mass.toFixed(1)})</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-sidebar-destructive-foreground hover:bg-destructive/30" onClick={(e) => { e.stopPropagation(); props.onRemoveObject(obj.id); }}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-sidebar-destructive-foreground hover:bg-destructive/30 flex-shrink-0" onClick={(e) => { e.stopPropagation(); props.onRemoveObject(obj.id); }}> {/* Added flex-shrink-0 */}
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -269,16 +269,16 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
             </AccordionTrigger>
             <AccordionContent className="pt-2 space-y-4">
               <div className="flex space-x-2">
-                <Button 
-                  onClick={() => props.onSetSimulationStatus('running')} 
-                  disabled={props.simulationStatus === 'running'} 
+                <Button
+                  onClick={() => props.onSetSimulationStatus('running')}
+                  disabled={props.simulationStatus === 'running'}
                   className="flex-1 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"
                 >
                   <Play className="mr-2 h-4 w-4" /> Start
                 </Button>
-                <Button 
-                  onClick={() => props.onSetSimulationStatus('paused')} 
-                  disabled={props.simulationStatus !== 'running'} 
+                <Button
+                  onClick={() => props.onSetSimulationStatus('paused')}
+                  disabled={props.simulationStatus !== 'running'}
                   className="flex-1 bg-sidebar-accent hover:bg-sidebar-accent/90 text-sidebar-accent-foreground"
                 >
                   <Pause className="mr-2 h-4 w-4" /> Pause
@@ -323,9 +323,9 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               <Lightbulb className="mr-2 h-5 w-5" /> AI Suggestions
             </AccordionTrigger>
             <AccordionContent className="pt-2 space-y-4">
-              <Button 
-                onClick={handleAISuggest} 
-                disabled={isAISuggesting || !(editingObjectType || selectedObject)} 
+              <Button
+                onClick={handleAISuggest}
+                disabled={isAISuggesting || !(editingObjectType || selectedObject)}
                 className="w-full bg-sidebar-accent hover:bg-sidebar-accent/90 text-sidebar-accent-foreground"
               >
                 {isAISuggesting ? "Thinking..." : "Suggest Parameters"}
@@ -366,3 +366,5 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 };
 
 export default ControlPanel;
+
+      
