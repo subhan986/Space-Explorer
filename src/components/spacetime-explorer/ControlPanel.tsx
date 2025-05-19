@@ -12,10 +12,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X } from 'lucide-react';
 import ObjectForm from './ObjectForm';
-import type { SceneObject, ObjectType, AISuggestion, Vector3 } from '@/types/spacetime';
+import type { SceneObject, ObjectType, AISuggestion, Vector3, MassiveObject } from '@/types/spacetime';
 import { suggestParameters, SuggestParametersInput } from '@/ai/flows/suggest-parameters';
 import { useToast } from '@/hooks/use-toast';
-import { MIN_SIMULATION_SPEED, MAX_SIMULATION_SPEED, DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
+import { 
+  MIN_SIMULATION_SPEED, MAX_SIMULATION_SPEED, DEFAULT_SIMULATION_SPEED, 
+  DEFAULT_TRAJECTORY_LENGTH, DEFAULT_ORBITER_OBJECT_RADIUS, 
+  G_CONSTANT, DEFAULT_ORBITAL_DISTANCE_OFFSET, DEFAULT_MASSIVE_OBJECT_RADIUS,
+  DEFAULT_MASSIVE_OBJECT_COLOR, DEFAULT_ORBITER_OBJECT_COLOR
+} from '@/lib/constants';
 import { Switch } from '@/components/ui/switch';
 
 interface ControlPanelProps {
@@ -49,45 +54,76 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   useEffect(() => {
     if (selectedObject) {
       setFormInitialData(selectedObject);
-      setEditingObjectType(null); // Clear editing mode if an object is selected
-    } else if (!editingObjectType) { // No selection, not in add mode
+      setEditingObjectType(null); 
+    } else if (!editingObjectType) { 
       setFormInitialData(undefined);
     }
-    // If editingObjectType is set, formInitialData will be set by handleAddObjectClick or applyAISuggestion
   }, [selectedObject, editingObjectType]);
 
 
   const handleAddObjectClick = (type: ObjectType) => {
-    props.onSelectObject(null); // Deselect any current object
+    props.onSelectObject(null);
     setEditingObjectType(type);
-    // Set initial data for the form based on type, including default AI suggestion values if available
-    const defaultMass = type === 'massive' ? 1000 : 1;
-    const defaultRadius = type === 'massive' ? 10 : 2;
-    const defaultColor = type === 'massive' ? '#FFD700' : '#00BFFF';
-    const baseInitialData = { 
-      mass: defaultMass, 
-      radius: defaultRadius, 
-      color: defaultColor,
-      position: {x:0,y:0,z:0}, 
-      velocity: {x:0,y:0,z:0}
+    
+    let baseInitialData: Partial<SceneObject> = {
+      mass: type === 'massive' ? 1000 : 1,
+      radius: type === 'massive' ? DEFAULT_MASSIVE_OBJECT_RADIUS : DEFAULT_ORBITER_OBJECT_RADIUS,
+      color: type === 'massive' ? DEFAULT_MASSIVE_OBJECT_COLOR : DEFAULT_ORBITER_OBJECT_COLOR,
+      position: { x: 0, y: 0, z: 0 },
+      velocity: { x: 0, y: 0, z: 0 },
     };
+
+    if (type === 'orbiter') {
+      const massiveObjects = props.objects.filter(obj => obj.type === 'massive') as MassiveObject[];
+      let centralBody: MassiveObject | null = null;
+      if (massiveObjects.length > 0) {
+        centralBody = massiveObjects.reduce((prev, current) => (prev.mass > current.mass) ? prev : current);
+      }
+
+      if (centralBody) {
+        const distance = (centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS) + 
+                         DEFAULT_ORBITER_OBJECT_RADIUS + 
+                         DEFAULT_ORBITAL_DISTANCE_OFFSET;
+        
+        const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
+        const centralBodyVel = centralBody.velocity || { x: 0, y: 0, z: 0 };
+
+        baseInitialData.position = {
+          x: centralBodyPos.x + distance,
+          y: centralBodyPos.y,
+          z: centralBodyPos.z,
+        };
+
+        let orbitalSpeed = 0;
+        if (centralBody.mass > 0 && distance > 0) {
+           orbitalSpeed = Math.sqrt((G_CONSTANT * centralBody.mass) / distance);
+        }
+        if (!isFinite(orbitalSpeed)) orbitalSpeed = 0;
+
+
+        baseInitialData.velocity = {
+          x: centralBodyVel.x,
+          y: centralBodyVel.y + orbitalSpeed, // Tangential velocity in Y for orbit in XY plane
+          z: centralBodyVel.z,
+        };
+      }
+    }
     setFormInitialData(baseInitialData);
-    setAiSuggestion(null); // Clear AI suggestions when starting a new object
+    setAiSuggestion(null);
   };
 
   const handleObjectFormSubmit = (data: Partial<SceneObject>) => {
-    if (data.id) { // Editing existing object
+    if (data.id) { 
       props.onUpdateObject(data as SceneObject);
       toast({ title: "Object Updated", description: `${data.name} properties saved.` });
-    } else { // Adding new object
+    } else { 
       const newId = `obj_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const fullObjectData = { ...data, id: newId, type: editingObjectType! } as SceneObject;
       props.onAddObject(fullObjectData);
       toast({ title: "Object Added", description: `${data.name} added to the scene.` });
     }
-    setEditingObjectType(null); // Close form
-    setFormInitialData(undefined); // Clear form data
-    // props.onSelectObject(null); // Deselect object after submit to clear form, or select new one
+    setEditingObjectType(null); 
+    setFormInitialData(undefined); 
   };
 
   const handleAISuggest = async () => {
@@ -104,7 +140,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         input.currentMass = targetForAISuggestion.mass;
         if (targetForAISuggestion.velocity) {
           const v = targetForAISuggestion.velocity;
-          input.currentVelocity = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+          input.currentVelocity = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z); // Magnitude
         }
       }
 
@@ -123,21 +159,21 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     if (!aiSuggestion) return;
 
     const baseData = formInitialData || selectedObject || {};
+    // Current AI only suggests scalar velocity, apply to X for now.
+    // If AI suggests vector in future, this part needs update.
+    const currentVel = baseData.velocity || { x: 0, y: 0, z: 0 };
     const suggestedData: Partial<SceneObject> = {
-        ...baseData, // Keep existing properties like name, color, radius, type, id
+        ...baseData, 
         mass: aiSuggestion.suggestedMass,
-        velocity: { x: aiSuggestion.suggestedVelocity, y: baseData.velocity?.y || 0, z: baseData.velocity?.z || 0 }, // Apply to X, keep Y/Z or default
-        // If form is for a new object, ensure type is set
+        velocity: { x: aiSuggestion.suggestedVelocity, y: currentVel.y, z: currentVel.z },
         ...(editingObjectType && !baseData.type && { type: editingObjectType }),
     };
 
     if (editingObjectType || selectedObject) {
-      // If form is open (either for new or editing), update formInitialData to trigger re-render of ObjectForm
       setFormInitialData(suggestedData);
       toast({ title: "AI Suggestion Applied", description: "Parameters updated in the form. Review and save." });
     }
-    // No need to call onUpdateObject directly here, user saves via form
-    setAiSuggestion(null); // Clear after applying
+    setAiSuggestion(null); 
   };
 
 
@@ -167,7 +203,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                     <ObjectForm
                       key={selectedObject?.id || editingObjectType || 'new-object-form'} 
                       objectType={editingObjectType || selectedObject!.type}
-                      initialData={formInitialData} // Pass state that can be updated by AI
+                      initialData={formInitialData} 
                       onSubmit={handleObjectFormSubmit}
                       onCancel={() => { setEditingObjectType(null); props.onSelectObject(null); setFormInitialData(undefined); }}
                       submitButtonText={selectedObject ? "Update Object" : "Add Object"}
@@ -184,7 +220,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                   <div key={obj.id} 
                        className={`flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-sidebar-accent/80
                                    ${props.selectedObjectId === obj.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'bg-sidebar-accent/20'}`}
-                       onClick={() => { props.onSelectObject(obj.id); setEditingObjectType(null); /* selectedObject effect will setFormInitialData */ }}>
+                       onClick={() => { props.onSelectObject(obj.id); setEditingObjectType(null); }}>
                     <span className="truncate" style={{color: obj.color, fontWeight: props.selectedObjectId === obj.id ? 'bold' : 'normal'}}>{obj.name} ({obj.type}, M: {obj.mass.toFixed(1)})</span>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-sidebar-destructive-foreground hover:bg-destructive/30" onClick={(e) => { e.stopPropagation(); props.onRemoveObject(obj.id); }}>
                       <Trash2 className="h-4 w-4" />
