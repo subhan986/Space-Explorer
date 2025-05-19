@@ -206,10 +206,12 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 
 
   return (
-    <div className="p-4 h-full flex flex-col bg-sidebar text-sidebar-foreground rounded-lg shadow-lg">
-      <h2 className="text-2xl font-semibold mb-4 text-sidebar-primary-foreground">Spacetime Explorer</h2>
-      <Separator className="mb-4 bg-sidebar-border" />
-      <ScrollArea className="flex-grow pr-2">
+    <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground rounded-lg shadow-lg overflow-hidden">
+      <div className="p-4"> {/* Added a wrapper for title and separator to control their padding independently */}
+        <h2 className="text-2xl font-semibold mb-4 text-sidebar-primary-foreground">Spacetime Explorer</h2>
+        <Separator className="mb-4 bg-sidebar-border" />
+      </div>
+      <ScrollArea className="flex-grow p-4 pt-0"> {/* Changed pr-2 to p-4, and pt-0 to avoid double padding with header */}
         <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4']} className="w-full">
           {/* Object Management */}
           <AccordionItem value="item-1">
@@ -364,5 +366,3 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 };
 
 export default ControlPanel;
-
-    
