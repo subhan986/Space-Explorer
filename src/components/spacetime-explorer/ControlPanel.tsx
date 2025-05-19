@@ -15,9 +15,9 @@ import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, AISuggestion, Vector3, MassiveObject } from '@/types/spacetime';
 import { suggestParameters, SuggestParametersInput } from '@/ai/flows/suggest-parameters';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  MIN_SIMULATION_SPEED, MAX_SIMULATION_SPEED, DEFAULT_SIMULATION_SPEED, 
-  DEFAULT_TRAJECTORY_LENGTH, DEFAULT_ORBITER_OBJECT_RADIUS, 
+import {
+  MIN_SIMULATION_SPEED, MAX_SIMULATION_SPEED, DEFAULT_SIMULATION_SPEED,
+  DEFAULT_TRAJECTORY_LENGTH, DEFAULT_ORBITER_OBJECT_RADIUS,
   G_CONSTANT, DEFAULT_ORBITAL_DISTANCE_OFFSET, DEFAULT_MASSIVE_OBJECT_RADIUS,
   DEFAULT_MASSIVE_OBJECT_COLOR, DEFAULT_ORBITER_OBJECT_COLOR
 } from '@/lib/constants';
@@ -54,8 +54,8 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   useEffect(() => {
     if (selectedObject) {
       setFormInitialData(selectedObject);
-      setEditingObjectType(null); 
-    } else if (!editingObjectType) { 
+      setEditingObjectType(null);
+    } else if (!editingObjectType) {
       setFormInitialData(undefined);
     }
   }, [selectedObject, editingObjectType]);
@@ -64,7 +64,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   const handleAddObjectClick = (type: ObjectType) => {
     props.onSelectObject(null);
     setEditingObjectType(type);
-    
+
     let baseInitialData: Partial<SceneObject> = {
       mass: type === 'massive' ? 1000 : 1,
       radius: type === 'massive' ? DEFAULT_MASSIVE_OBJECT_RADIUS : DEFAULT_ORBITER_OBJECT_RADIUS,
@@ -81,15 +81,15 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       }
 
       if (centralBody) {
-        const distance = (centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS) + 
-                         DEFAULT_ORBITER_OBJECT_RADIUS + 
+        const distance = (centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS) +
+                         DEFAULT_ORBITER_OBJECT_RADIUS +
                          DEFAULT_ORBITAL_DISTANCE_OFFSET;
-        
+
         const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
         const centralBodyVel = centralBody.velocity || { x: 0, y: 0, z: 0 };
 
         baseInitialData.position = {
-          x: centralBodyPos.x + distance,
+          x: centralBodyPos.x + distance, // Offset along X axis
           y: centralBodyPos.y,
           z: centralBodyPos.z,
         };
@@ -103,8 +103,8 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 
         baseInitialData.velocity = {
           x: centralBodyVel.x,
-          y: centralBodyVel.y + orbitalSpeed, // Tangential velocity in Y for orbit in XY plane
-          z: centralBodyVel.z,
+          y: centralBodyVel.y, // Keep Y velocity aligned with central body
+          z: centralBodyVel.z + orbitalSpeed, // Tangential velocity in Z for orbit in XZ plane
         };
       }
     }
@@ -113,17 +113,17 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   };
 
   const handleObjectFormSubmit = (data: Partial<SceneObject>) => {
-    if (data.id) { 
+    if (data.id) {
       props.onUpdateObject(data as SceneObject);
       toast({ title: "Object Updated", description: `${data.name} properties saved.` });
-    } else { 
+    } else {
       const newId = `obj_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const fullObjectData = { ...data, id: newId, type: editingObjectType! } as SceneObject;
       props.onAddObject(fullObjectData);
       toast({ title: "Object Added", description: `${data.name} added to the scene.` });
     }
-    setEditingObjectType(null); 
-    setFormInitialData(undefined); 
+    setEditingObjectType(null);
+    setFormInitialData(undefined);
   };
 
   const handleAISuggest = async () => {
@@ -133,7 +133,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       const input: SuggestParametersInput = {
         scenarioDescription: "User is setting up a 3D gravity simulation.",
       };
-      
+
       const targetForAISuggestion = formInitialData || selectedObject;
 
       if (targetForAISuggestion) {
@@ -154,18 +154,31 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       setIsAISuggesting(false);
     }
   };
-  
+
  const applyAISuggestion = () => {
     if (!aiSuggestion) return;
 
     const baseData = formInitialData || selectedObject || {};
-    // Current AI only suggests scalar velocity, apply to X for now.
-    // If AI suggests vector in future, this part needs update.
+    // Current AI only suggests scalar velocity.
+    // We will now apply this magnitude primarily to the Z velocity if it's an orbiter being set up for XZ plane orbit,
+    // or maintain existing YZ velocity components and adjust X.
+    // For simplicity, if user initiated AI for a new orbiter, it aligns with XZ plane logic.
+    // If editing an existing object, it's less clear how to distribute suggested scalar velocity.
+    // Let's apply it to the Z component for new orbiters, and mostly to X for others or if no clear plane.
+
+    let newVelocity: Vector3;
     const currentVel = baseData.velocity || { x: 0, y: 0, z: 0 };
+
+    if (editingObjectType === 'orbiter' && !selectedObject) { // New orbiter, likely XZ plane
+      newVelocity = { x: currentVel.x, y: currentVel.y, z: aiSuggestion.suggestedVelocity };
+    } else { // Existing object or new massive object, AI suggested scalar velocity is applied to X
+      newVelocity = { x: aiSuggestion.suggestedVelocity, y: currentVel.y, z: currentVel.z };
+    }
+    
     const suggestedData: Partial<SceneObject> = {
-        ...baseData, 
+        ...baseData,
         mass: aiSuggestion.suggestedMass,
-        velocity: { x: aiSuggestion.suggestedVelocity, y: currentVel.y, z: currentVel.z },
+        velocity: newVelocity,
         ...(editingObjectType && !baseData.type && { type: editingObjectType }),
     };
 
@@ -173,7 +186,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       setFormInitialData(suggestedData);
       toast({ title: "AI Suggestion Applied", description: "Parameters updated in the form. Review and save." });
     }
-    setAiSuggestion(null); 
+    setAiSuggestion(null);
   };
 
 
@@ -193,7 +206,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                 <Button onClick={() => handleAddObjectClick('massive')} className="flex-1 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"><PlusCircle className="mr-2 h-4 w-4" /> Add Massive</Button>
                 <Button onClick={() => handleAddObjectClick('orbiter')} className="flex-1 bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"><PlusCircle className="mr-2 h-4 w-4" /> Add Orbiter</Button>
               </div>
-              
+
               {(editingObjectType || selectedObject) && (
                 <Card className="bg-card text-card-foreground border-sidebar-border">
                   <CardHeader>
@@ -201,9 +214,9 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                   </CardHeader>
                   <CardContent>
                     <ObjectForm
-                      key={selectedObject?.id || editingObjectType || 'new-object-form'} 
+                      key={selectedObject?.id || editingObjectType || 'new-object-form'}
                       objectType={editingObjectType || selectedObject!.type}
-                      initialData={formInitialData} 
+                      initialData={formInitialData}
                       onSubmit={handleObjectFormSubmit}
                       onCancel={() => { setEditingObjectType(null); props.onSelectObject(null); setFormInitialData(undefined); }}
                       submitButtonText={selectedObject ? "Update Object" : "Add Object"}
@@ -217,7 +230,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               {props.objects.length === 0 && <p className="text-sm text-sidebar-muted-foreground">No objects in scene.</p>}
               <div className="max-h-40 space-y-1">
                 {props.objects.map(obj => (
-                  <div key={obj.id} 
+                  <div key={obj.id}
                        className={`flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-sidebar-accent/80
                                    ${props.selectedObjectId === obj.id ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'bg-sidebar-accent/20'}`}
                        onClick={() => { props.onSelectObject(obj.id); setEditingObjectType(null); }}>
@@ -242,7 +255,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                 <Button onClick={() => props.onSetSimulationStatus('paused')} disabled={props.simulationStatus !== 'running'} className="flex-1 bg-yellow-500 hover:bg-yellow-600"><Pause className="mr-2 h-4 w-4" /> Pause</Button>
               </div>
               <Button onClick={props.onResetSimulation} variant="outline" className="w-full border-sidebar-primary text-sidebar-primary hover:bg-sidebar-primary/10"><SkipForward className="mr-2 h-4 w-4" /> Reset Simulation</Button>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="simSpeed" className="text-sidebar-foreground/80">Speed: {props.simulationSpeed.toFixed(1)}x</Label>
                 <Slider
@@ -255,7 +268,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               </div>
               <div className="flex items-center justify-between pt-2">
                 <Label htmlFor="show-trajectories" className="text-sidebar-foreground/80">Show Trajectories</Label>
-                <Switch id="show-trajectories" checked={props.showTrajectories} onCheckedChange={props.onSetShowTrajectories} 
+                <Switch id="show-trajectories" checked={props.showTrajectories} onCheckedChange={props.onSetShowTrajectories}
                   className="data-[state=checked]:bg-sidebar-primary data-[state=unchecked]:bg-input"
                 />
               </div>
@@ -292,7 +305,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <p><strong>Mass:</strong> {aiSuggestion.suggestedMass.toFixed(2)}</p>
-                    <p><strong>Velocity (X):</strong> {aiSuggestion.suggestedVelocity.toFixed(2)}</p>
+                    <p><strong>Velocity (Magnitude):</strong> {aiSuggestion.suggestedVelocity.toFixed(2)}</p>
                     <div className="flex justify-end space-x-2 pt-2">
                        <Button variant="outline" size="sm" onClick={() => setAiSuggestion(null)} className="border-sidebar-ring text-sidebar-ring hover:bg-sidebar-ring/10">
                          <X className="mr-1 h-4 w-4" /> Dismiss
@@ -305,8 +318,8 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                 </Card>
               )}
               <p className="text-xs text-sidebar-muted-foreground">
-                {editingObjectType ? `AI will suggest parameters for the new ${editingObjectType} object.` : 
-                 selectedObject ? `AI will suggest parameters based on '${selectedObject.name}'.` : 
+                {editingObjectType ? `AI will suggest parameters for the new ${editingObjectType} object.` :
+                 selectedObject ? `AI will suggest parameters based on '${selectedObject.name}'.` :
                  "Select an object or start adding one to get AI suggestions."}
               </p>
             </AccordionContent>
