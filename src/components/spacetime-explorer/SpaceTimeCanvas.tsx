@@ -222,23 +222,23 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         let totalDisplacement = 0;
         objectsWithMassForGrid.forEach(mo => {
           const moWorldX = mo.threePosition.x;
-          const moWorldZ = mo.threePosition.z;
+          const moWorldZ = mo.threePosition.z; // In plane geometry, mesh's Y maps to world's Z for gravity well calculation
 
           const dx = localX - moWorldX;
-          const dz = localPlaneY - moWorldZ;
+          const dz = localPlaneY - moWorldZ; // Use localPlaneY as it corresponds to the grid's "depth" axis (world Z)
           const distanceOnPlaneSq = dx * dx + dz * dz;
 
           const safeDistanceOnPlaneSq = Math.max(distanceOnPlaneSq, 0.0001);
 
-          const wellStrength = mo.mass * 0.015;
-          const falloffFactor = Math.max(mo.mass * 2, 0.1);
+          const wellStrength = mo.mass * 0.015; // How deep the well is
+          const falloffFactor = Math.max(mo.mass * 2, 0.1); // How wide the well is, increased influence with mass
 
           const displacement = -wellStrength * Math.exp(-safeDistanceOnPlaneSq / falloffFactor);
           if (isFinite(displacement)) {
               totalDisplacement += displacement;
           }
         });
-        const maxDisplacement = GRID_SIZE / 5;
+        const maxDisplacement = GRID_SIZE / 5; // Cap displacement to prevent extreme warping
         positions.setZ(i, originalPositions.getZ(i) + Math.max(-maxDisplacement, Math.min(maxDisplacement, totalDisplacement)));
       }
     }
@@ -253,7 +253,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    scene.background = new THREE.Color(0x222222);
+    scene.background = new THREE.Color(0x222222); // Matches globals.css --background
 
     const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 2000);
     cameraRef.current = camera;
@@ -269,31 +269,34 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     controlsRef.current = controls;
     controls.enableDamping = true;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Softer ambient light
     scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Stronger directional
     directionalLight.position.set(50, 80, 60);
-    directionalLight.castShadow = true;
+    directionalLight.castShadow = true; // Enable shadows for more depth
     scene.add(directionalLight);
 
+    // Grid Plane (Spacetime Fabric)
     const planeGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE, GRID_DIVISIONS, GRID_DIVISIONS);
     const planeMaterial = new THREE.MeshStandardMaterial({
-      color: 0x8A2BE2,
+      color: 0x8A2BE2, // Violet, matches --accent
       wireframe: true,
       transparent: true,
-      opacity: 0.3,
-      metalness: 0.1,
-      roughness: 0.9,
+      opacity: 0.3, // Slightly more opaque
+      metalness: 0.1, // Less metallic
+      roughness: 0.9, // More rough
     });
     const gridPlane = new THREE.Mesh(planeGeometry, planeMaterial);
-    gridPlane.rotation.x = -Math.PI / 2;
-    gridPlane.receiveShadow = true;
+    gridPlane.rotation.x = -Math.PI / 2; // Orient plane horizontally
+    gridPlane.receiveShadow = true; // Allow grid to receive shadows
     scene.add(gridPlane);
     gridPlaneRef.current = gridPlane;
+    // Store original positions for deformation
     if (gridPlaneRef.current) {
         gridPlaneRef.current.geometry.userData.originalPositions =
             (gridPlaneRef.current.geometry.attributes.position as THREE.BufferAttribute).clone();
     }
+
 
     const handleResize = () => {
       if (currentMount && cameraRef.current && rendererRef.current) {
@@ -322,9 +325,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       });
       gridPlaneRef.current?.geometry.dispose();
       (gridPlaneRef.current?.material as THREE.Material)?.dispose();
-      sceneRef.current?.clear();
+      sceneRef.current?.clear(); // Clear all children from the scene
     };
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
 
   // Effect for running the animation loop
@@ -341,10 +344,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const animate = () => {
         animationFrameIdRef.current = requestAnimationFrame(animate);
-        controls.update();
+        controls.update(); // Update orbit controls
 
         if (simulationStatus === 'running') {
-            const dt = simulationSpeed * (1 / 60);
+            const dt = simulationSpeed * (1 / 60); // Time delta for physics update
             updatePhysics(dt);
             updateTrajectories();
             deformGrid();
@@ -364,10 +367,11 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid]);
 
 
+  // Effect to synchronize `objects` prop with internal `simulationObjectsRef` and Three.js meshes
   useEffect(() => {
     if (!sceneRef.current) return;
     const scene = sceneRef.current;
-    const newSimMap = new Map(simulationObjectsRef.current);
+    const newSimMap = new Map(simulationObjectsRef.current); // Start with current simulation state
     const currentPropIds = new Set<string>();
 
     objects.forEach(objData => {
@@ -375,12 +379,13 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       let simObj = newSimMap.get(objData.id);
       let threeMesh = objectsMapRef.current.get(objData.id);
 
+      // Validate and sanitize prop data
       const propPos = isValidVector(objData.position) ? objData.position : {x:0, y:0, z:0};
       const propVel = isValidVector(objData.velocity) ? objData.velocity : {x:0, y:0, z:0};
-      const propRadius = (objData.radius && objData.radius > 0.01) ? objData.radius : 0.01;
+      const propRadius = (objData.radius && objData.radius > 0.01) ? objData.radius : 0.01; // Min radius
       const propMass = (typeof objData.mass === 'number' && isFinite(objData.mass)) ? objData.mass : 0;
 
-      if (!simObj || !threeMesh) {
+      if (!simObj || !threeMesh) { // New object or mesh needs recreation
         const newThreePosition = new THREE.Vector3(propPos.x, propPos.y, propPos.z);
         const newThreeVelocity = new THREE.Vector3(propVel.x, propVel.y, propVel.z);
         simObj = {
@@ -395,6 +400,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         };
         newSimMap.set(objData.id, simObj);
 
+        // If mesh exists but simObj doesn't (should be rare), remove old mesh first
         if (threeMesh) {
             scene.remove(threeMesh);
             threeMesh.geometry.dispose();
@@ -405,46 +411,52 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         const geometry = new THREE.SphereGeometry(simObj.radius, 32, 32);
         const material = new THREE.MeshStandardMaterial({ color: simObj.color, metalness:0.3, roughness:0.6 });
         threeMesh = new THREE.Mesh(geometry, material);
-        threeMesh.name = objData.id;
-        threeMesh.castShadow = true;
+        threeMesh.name = objData.id; // Useful for debugging in Three.js inspector
+        threeMesh.castShadow = true; // Object casts shadow
         scene.add(threeMesh);
         objectsMapRef.current.set(objData.id, threeMesh);
-        threeMesh.position.copy(newThreePosition);
+        threeMesh.position.copy(newThreePosition); // Set initial mesh position
+        // Initialize trajectory points for new object
         trajectoryPointsRef.current.set(objData.id, [newThreePosition.clone()]);
-      } else {
+      } else { // Existing object, update its properties
         let corePhysicsStateReset = false;
 
         // Update non-physics properties directly
         simObj.name = objData.name;
         simObj.type = objData.type;
 
+        // Update visual properties (radius, color) if they changed
         if (simObj.radius !== propRadius) {
            simObj.radius = propRadius;
-           threeMesh.geometry.dispose();
-           threeMesh.geometry = new THREE.SphereGeometry(simObj.radius, 32, 32);
+           threeMesh.geometry.dispose(); // Dispose old geometry
+           threeMesh.geometry = new THREE.SphereGeometry(simObj.radius, 32, 32); // Create new
         }
         if (simObj.color !== objData.color) {
             simObj.color = objData.color;
             (threeMesh.material as THREE.MeshStandardMaterial).color.set(simObj.color);
         }
 
-        // Check if core physics properties from props should override simulation
+        // Update core physics state (mass, position, velocity) from props only if:
+        // 1. Simulation is NOT running, OR
+        // 2. The object's mass has changed (this implies a reset of its physics state to new initial conditions)
         if (simulationStatus !== 'running' || simObj.mass !== propMass) {
           simObj.mass = propMass;
           simObj.threePosition.set(propPos.x, propPos.y, propPos.z);
           simObj.threeVelocity.set(propVel.x, propVel.y, propVel.z);
-          threeMesh.position.copy(simObj.threePosition);
+          threeMesh.position.copy(simObj.threePosition); // Sync mesh position
           corePhysicsStateReset = true;
         }
         // If simulation is running and mass hasn't changed, physics engine controls pos/vel.
         // Mesh position is updated directly in updatePhysics.
 
         if (corePhysicsStateReset) {
+            // If physics state was reset, clear old trajectory and start anew
             trajectoryPointsRef.current.set(objData.id, [simObj.threePosition.clone()]);
         }
       }
     });
 
+    // Remove objects from simulation and scene if they are no longer in props.objects
     simulationObjectsRef.current.forEach((_, id) => {
       if (!currentPropIds.has(id)) {
         const meshToRemove = objectsMapRef.current.get(id);
@@ -466,12 +478,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         newSimMap.delete(id);
       }
     });
-    simulationObjectsRef.current = newSimMap;
+    simulationObjectsRef.current = newSimMap; // Update the main simulation state ref
 
-  }, [objects, simulationStatus, isValidVector]);
+  }, [objects, simulationStatus, isValidVector]); // Re-run when objects prop or simulationStatus changes
 
+  // Effect for handling simulation reset (status 'stopped')
   useEffect(() => {
     if (simulationStatus === 'stopped') {
+      // Clear all trajectories visually and from memory
       trajectoriesRef.current.forEach((line) => {
         if (line.parent) sceneRef.current?.remove(line);
         line.geometry.dispose();
@@ -480,7 +494,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       trajectoriesRef.current.clear();
       trajectoryPointsRef.current.clear();
 
-      const updatedSimMap = new Map<string, SimulationObjectInternal>();
+      // Re-initialize simulationObjectsRef based on the `objects` prop to reset positions/velocities
+      const updatedSimMap = new Map<string, SimulationObjectInternal>(); // Create a fresh map
 
       objects.forEach(objData => {
         const pos = isValidVector(objData.position) ? objData.position : {x:0, y:0, z:0};
@@ -502,9 +517,11 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           name: objData.name,
         });
 
+        // Also update the Three.js mesh position and visual properties
         const threeMesh = objectsMapRef.current.get(objData.id);
         if (threeMesh) {
           threeMesh.position.copy(threePos);
+          // Ensure visual properties like radius and color are also reset from props
           if ((threeMesh.geometry as THREE.SphereGeometry).parameters.radius !== propRadius) {
             threeMesh.geometry.dispose();
             threeMesh.geometry = new THREE.SphereGeometry(propRadius, 32, 32);
@@ -513,10 +530,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             (threeMesh.material as THREE.MeshStandardMaterial).color.set(objData.color);
           }
         }
+         // Initialize trajectory for each object after stop
+        trajectoryPointsRef.current.set(objData.id, [threePos.clone()]);
       });
-      simulationObjectsRef.current = updatedSimMap;
+      simulationObjectsRef.current = updatedSimMap; // Set the simulation state to this newly initialized map
 
-      updateTrajectories();
+      // After resetting object states, also update trajectories (which should now be empty/single point)
+      // and deform the grid according to the reset positions.
+      updateTrajectories(); // This will clear/reset visual lines if showTrajectories is true
       deformGrid();
     }
   }, [simulationStatus, objects, isValidVector, updateTrajectories, deformGrid]); // Added updateTrajectories and deformGrid as dependencies
@@ -525,3 +546,5 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
+
+    
