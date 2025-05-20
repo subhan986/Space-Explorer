@@ -8,7 +8,7 @@ import SpaceTimeCanvas from '@/components/spacetime-explorer/SpaceTimeCanvas';
 import ControlPanel from '@/components/spacetime-explorer/ControlPanel';
 import type { SceneObject } from '@/types/spacetime';
 import { DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
-import { Settings } from 'lucide-react'; // Changed from PanelLeft
+import { Settings } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 export default function SpacetimeExplorerPage() {
@@ -80,7 +80,7 @@ export default function SpacetimeExplorerPage() {
   return (
     <SidebarProvider defaultOpen={true}>
       <Sidebar
-        collapsible="icon"
+        collapsible="offcanvas" // Changed from "icon" to "offcanvas"
         className="max-w-sm" 
         variant="floating" 
       >
@@ -106,8 +106,8 @@ export default function SpacetimeExplorerPage() {
       </Sidebar>
       <SidebarInset className="flex flex-col h-screen bg-background">
         <header className="p-2 border-b border-border flex items-center gap-2 h-[var(--sidebar-width-icon)] md:h-auto sticky top-0 bg-background z-10">
-            <SidebarTrigger className="rounded-full"> {/* Added rounded-full */}
-                <Settings /> {/* Changed icon */}
+            <SidebarTrigger className="rounded-full">
+                <Settings />
             </SidebarTrigger>
             {/* Adjusted text size for better mobile display */}
             <h1 className="text-md md:text-lg font-semibold text-foreground">3D Visualization Area</h1>
@@ -127,3 +127,4 @@ export default function SpacetimeExplorerPage() {
     </SidebarProvider>
   );
 }
+
