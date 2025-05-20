@@ -10,10 +10,12 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass } from 'lucide-react';
+import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass } from 'lucide-react';
 import ObjectForm from './ObjectForm';
-import type { SceneObject, ObjectType, AISuggestion, Vector3, MassiveObject, LightingMode } from '@/types/spacetime';
-import { suggestParameters, SuggestParametersInput } from '@/ai/flows/suggest-parameters';
+import type { SceneObject, ObjectType, Vector3, MassiveObject, LightingMode } from '@/types/spacetime';
+// AI Suggestion related imports removed as the section is being removed
+// import { suggestParameters, SuggestParametersInput } from '@/ai/flows/suggest-parameters';
+// import type { AISuggestion } from '@/types/spacetime';
 import { useToast } from '@/hooks/use-toast';
 import {
   MIN_SIMULATION_SPEED, MAX_SIMULATION_SPEED, DEFAULT_SIMULATION_SPEED,
@@ -21,7 +23,7 @@ import {
   G_CONSTANT, DEFAULT_ORBITAL_DISTANCE_OFFSET, DEFAULT_MASSIVE_OBJECT_RADIUS,
   DEFAULT_MASSIVE_OBJECT_COLOR, DEFAULT_ORBITER_OBJECT_COLOR
 } from '@/lib/constants';
-import { REAL_OBJECT_DEFINITIONS, type RealObjectDefinition } from '@/lib/real-objects';
+import { REAL_OBJECT_DEFINITIONS } from '@/lib/real-objects';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -51,8 +53,9 @@ interface ControlPanelProps {
 const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   const { toast } = useToast();
   const [editingObjectType, setEditingObjectType] = useState<ObjectType | null>(null);
-  const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
-  const [isAISuggesting, setIsAISuggesting] = useState(false);
+  // AI Suggestion related state removed
+  // const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
+  // const [isAISuggesting, setIsAISuggesting] = useState(false);
   const [formInitialData, setFormInitialData] = useState<Partial<SceneObject> | undefined>(undefined);
 
 
@@ -118,7 +121,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       }
     }
     setFormInitialData(baseInitialData); 
-    setAiSuggestion(null); 
+    // setAiSuggestion(null); // AI Suggestion related state removed
   };
 
   const handleObjectFormSubmit = (data: Partial<SceneObject>) => {
@@ -135,60 +138,11 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     setFormInitialData(undefined); 
   };
 
-  const handleAISuggest = async () => {
-    setIsAISuggesting(true);
-    setAiSuggestion(null);
-    try {
-      const input: SuggestParametersInput = {
-        scenarioDescription: "User is setting up a 3D gravity simulation.",
-      };
-      const targetForAISuggestion = formInitialData || selectedObject;
+  // AI Suggestion related functions removed
+  // const handleAISuggest = async () => { ... };
+  // const applyAISuggestion = () => { ... };
 
-      if (targetForAISuggestion) {
-        input.currentMass = targetForAISuggestion.mass;
-        if (targetForAISuggestion.velocity) {
-          const v = targetForAISuggestion.velocity;
-          input.currentVelocity = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
-        }
-      }
-
-      const result = await suggestParameters(input);
-      setAiSuggestion(result);
-      toast({ title: "AI Suggestion Ready", description: "Parameters suggested by AI." });
-    } catch (error) {
-      console.error("AI suggestion error:", error);
-      toast({ variant: "destructive", title: "AI Error", description: "Could not get suggestions." });
-    } finally {
-      setIsAISuggesting(false);
-    }
-  };
-
- const applyAISuggestion = () => {
-    if (!aiSuggestion) return;
-    const baseData = formInitialData || selectedObject || {}; 
-    let newVelocity: Vector3;
-    const currentVel = baseData.velocity || { x: 0, y: 0, z: 0 };
-
-    if (editingObjectType === 'orbiter' && !selectedObject) { 
-      newVelocity = { x: currentVel.x, y: currentVel.y, z: currentVel.z + aiSuggestion.suggestedVelocity };
-    } else { 
-      newVelocity = { x: currentVel.x + aiSuggestion.suggestedVelocity, y: currentVel.y, z: currentVel.z };
-    }
-
-    const suggestedData: Partial<SceneObject> = {
-        ...baseData, 
-        mass: aiSuggestion.suggestedMass,
-        velocity: newVelocity,
-        ...(editingObjectType && !baseData.type && { type: editingObjectType }),
-    };
-    if (editingObjectType || selectedObject) { 
-      setFormInitialData(suggestedData);
-      toast({ title: "AI Suggestion Applied", description: "Parameters updated in the form. Review and save." });
-    }
-    setAiSuggestion(null); 
-  };
-
-  const handleAddRealObject = (objectKey: keyof typeof REAL_OBJECT_DEFINITIONS) => {
+ const handleAddRealObject = (objectKey: keyof typeof REAL_OBJECT_DEFINITIONS) => {
     const definition = REAL_OBJECT_DEFINITIONS[objectKey];
     if (!definition) return;
 
@@ -276,7 +230,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         <Separator className="mb-4 bg-sidebar-border" />
       </div>
       <ScrollArea className="flex-grow p-4 pt-0">
-        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4', 'item-5', 'item-6', 'item-7']} className="w-full">
+        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-4', 'item-5', 'item-6', 'item-7']} className="w-full">
 
           <AccordionItem value="item-1" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
@@ -468,48 +422,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               <p className="text-sm text-sidebar-muted-foreground">
                 Plan and execute space missions from this panel. Launch probes, deploy satellites, 
                 and set objectives for your cosmic adventures. Coming soon!
-              </p>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="item-3" className="border-b-0">
-            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
-              <Lightbulb className="mr-2 h-5 w-5" /> AI Suggestions
-            </AccordionTrigger>
-            <AccordionContent className="pt-2 space-y-4">
-              <Button
-                size="sm"
-                onClick={handleAISuggest}
-                disabled={isAISuggesting || !(editingObjectType || selectedObject)} 
-                className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"
-              >
-                {isAISuggesting ? "Thinking..." : "Suggest Parameters"}
-              </Button>
-              {isAISuggesting && <p className="text-sm text-center text-sidebar-muted-foreground">AI is generating suggestions...</p>}
-              {aiSuggestion && (
-                <Card className="bg-card text-card-foreground border-sidebar-border">
-                  <CardHeader>
-                    <CardTitle className="text-sidebar-foreground">AI Suggested Parameters</CardTitle>
-                    <CardDescription className="text-sidebar-muted-foreground">{aiSuggestion.explanation}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <p><strong>Mass:</strong> {aiSuggestion.suggestedMass.toFixed(2)}</p>
-                    <p><strong>Velocity (Magnitude):</strong> {aiSuggestion.suggestedVelocity.toFixed(2)}</p>
-                    <div className="flex justify-end space-x-2 pt-2">
-                       <Button variant="outline" size="sm" onClick={() => setAiSuggestion(null)} className="border-sidebar-ring text-sidebar-ring hover:bg-sidebar-ring/10">
-                         <X className="mr-1 h-4 w-4" /> Dismiss
-                       </Button>
-                       <Button size="sm" onClick={applyAISuggestion} className="bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
-                         <Check className="mr-1 h-4 w-4" /> Apply
-                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-              <p className="text-xs text-sidebar-muted-foreground">
-                {editingObjectType ? `AI will suggest parameters for the new ${editingObjectType} object.` :
-                 selectedObject ? `AI will suggest parameters based on '${selectedObject.name}'.` :
-                 "Select an object or start adding one to get AI suggestions."}
               </p>
             </AccordionContent>
           </AccordionItem>
