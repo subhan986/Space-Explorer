@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X, Library } from 'lucide-react';
+import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X, Library, Sun, Orbit, MoonIcon, SigmaSquare } from 'lucide-react'; // Added SigmaSquare for Black Hole
 import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, AISuggestion, Vector3, MassiveObject } from '@/types/spacetime';
 import { suggestParameters, SuggestParametersInput } from '@/ai/flows/suggest-parameters';
@@ -21,6 +21,7 @@ import {
   G_CONSTANT, DEFAULT_ORBITAL_DISTANCE_OFFSET, DEFAULT_MASSIVE_OBJECT_RADIUS,
   DEFAULT_MASSIVE_OBJECT_COLOR, DEFAULT_ORBITER_OBJECT_COLOR
 } from '@/lib/constants';
+import { REAL_OBJECT_DEFINITIONS, RealObjectDefinition } from '@/lib/real-objects';
 import { Switch } from '@/components/ui/switch';
 
 interface ControlPanelProps {
@@ -54,15 +55,15 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   useEffect(() => {
     if (selectedObject) {
       setFormInitialData(selectedObject);
-      setEditingObjectType(null); 
-    } else if (!editingObjectType) { 
+      setEditingObjectType(null);
+    } else if (!editingObjectType) {
       setFormInitialData(undefined);
     }
   }, [selectedObject, editingObjectType]);
 
 
   const handleAddObjectClick = (type: ObjectType) => {
-    props.onSelectObject(null); 
+    props.onSelectObject(null);
     setEditingObjectType(type);
 
     let baseInitialData: Partial<SceneObject> = {
@@ -82,14 +83,14 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 
       if (centralBody) {
         const actualCentralBodyRadius = centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS;
-        const actualOrbiterRadius = DEFAULT_ORBITER_OBJECT_RADIUS; 
+        const actualOrbiterRadius = DEFAULT_ORBITER_OBJECT_RADIUS;
         const dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 1.0);
         const distance = actualCentralBodyRadius + actualOrbiterRadius + dynamicClearanceOffset;
         const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
         const centralBodyVel = centralBody.velocity || { x: 0, y: 0, z: 0 };
 
         baseInitialData.position = {
-          x: centralBodyPos.x + distance, 
+          x: centralBodyPos.x + distance,
           y: centralBodyPos.y,
           z: centralBodyPos.z,
         };
@@ -99,32 +100,32 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
            orbitalSpeed = Math.sqrt((G_CONSTANT * centralBody.mass) / distance);
         }
         if (!isFinite(orbitalSpeed)) {
-          orbitalSpeed = 0; 
+          orbitalSpeed = 0;
         }
 
         baseInitialData.velocity = {
           x: centralBodyVel.x,
           y: centralBodyVel.y,
-          z: centralBodyVel.z + orbitalSpeed, 
+          z: centralBodyVel.z + orbitalSpeed,
         };
       }
     }
     setFormInitialData(baseInitialData);
-    setAiSuggestion(null); 
+    setAiSuggestion(null);
   };
 
   const handleObjectFormSubmit = (data: Partial<SceneObject>) => {
-    if (data.id) { 
+    if (data.id) {
       props.onUpdateObject(data as SceneObject);
       toast({ title: "Object Updated", description: `${data.name} properties saved.` });
-    } else { 
+    } else {
       const newId = `obj_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const fullObjectData = { ...data, id: newId, type: editingObjectType! } as SceneObject;
       props.onAddObject(fullObjectData);
       toast({ title: "Object Added", description: `${data.name} added to the scene.` });
     }
-    setEditingObjectType(null); 
-    setFormInitialData(undefined); 
+    setEditingObjectType(null);
+    setFormInitialData(undefined);
   };
 
   const handleAISuggest = async () => {
@@ -161,14 +162,14 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     let newVelocity: Vector3;
     const currentVel = baseData.velocity || { x: 0, y: 0, z: 0 };
 
-    if (editingObjectType === 'orbiter' && !selectedObject) { 
-      newVelocity = { x: currentVel.x, y: currentVel.y, z: aiSuggestion.suggestedVelocity };
-    } else { 
-      newVelocity = { x: aiSuggestion.suggestedVelocity, y: currentVel.y, z: currentVel.z };
+    if (editingObjectType === 'orbiter' && !selectedObject) {
+      newVelocity = { x: currentVel.x, y: currentVel.y, z: currentVel.z + aiSuggestion.suggestedVelocity };
+    } else {
+      newVelocity = { x: currentVel.x + aiSuggestion.suggestedVelocity, y: currentVel.y, z: currentVel.z };
     }
 
     const suggestedData: Partial<SceneObject> = {
-        ...baseData, 
+        ...baseData,
         mass: aiSuggestion.suggestedMass,
         velocity: newVelocity,
         ...(editingObjectType && !baseData.type && { type: editingObjectType }),
@@ -177,7 +178,80 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       setFormInitialData(suggestedData);
       toast({ title: "AI Suggestion Applied", description: "Parameters updated in the form. Review and save." });
     }
-    setAiSuggestion(null); 
+    setAiSuggestion(null);
+  };
+
+  const handleAddRealObject = (objectKey: keyof typeof REAL_OBJECT_DEFINITIONS) => {
+    const definition = REAL_OBJECT_DEFINITIONS[objectKey];
+    if (!definition) return;
+
+    const newId = `${definition.name.toLowerCase().replace(' ', '_')}_${Date.now()}`;
+    let position: Vector3 = definition.basePosition || { x: 0, y: 0, z: 0 };
+    let velocity: Vector3 = definition.baseVelocity || { x: 0, y: 0, z: 0 };
+
+    if (definition.type === 'orbiter' && definition.orbits) {
+      let centralBody: SceneObject | null = null;
+      // Prioritize specific parent type
+      if (definition.orbits === 'Sun') {
+        centralBody = props.objects.find(obj => obj.name === 'Sun' && obj.type === 'massive') || null;
+      } else if (definition.orbits === 'Earth') {
+         centralBody = props.objects.find(obj => obj.name === 'Earth' && obj.type === 'orbiter') || null;
+         if (!centralBody) { // Fallback to Sun if Earth not found for Moon
+            centralBody = props.objects.find(obj => obj.name === 'Sun' && obj.type === 'massive') || null;
+         }
+      }
+      
+      // Fallback to most massive object if specific parent not found
+      if (!centralBody && props.objects.filter(o => o.type === 'massive').length > 0) {
+        centralBody = props.objects
+          .filter(obj => obj.type === 'massive')
+          .reduce((prev, current) => (prev.mass > current.mass ? prev : current));
+      } else if (!centralBody && props.objects.length > 0) { // Fallback to any most massive if no massive type
+         centralBody = props.objects
+          .reduce((prev, current) => (prev.mass > current.mass ? prev : current));
+      }
+
+
+      if (centralBody) {
+        const actualCentralBodyRadius = centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS;
+        const actualOrbiterRadius = definition.radius;
+        const dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 1.2, definition.radius * 2); // Ensure good clearance
+        const distance = actualCentralBodyRadius + actualOrbiterRadius + dynamicClearanceOffset;
+        
+        const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
+        const centralBodyVel = centralBody.velocity || { x: 0, y: 0, z: 0 };
+
+        position = {
+          x: centralBodyPos.x + distance,
+          y: centralBodyPos.y, // Keep it planar for simplicity
+          z: centralBodyPos.z,
+        };
+
+        let orbitalSpeed = 0;
+        if (centralBody.mass > 0 && distance > 0) {
+          orbitalSpeed = Math.sqrt((G_CONSTANT * centralBody.mass) / distance);
+        }
+        if (!isFinite(orbitalSpeed)) {
+          orbitalSpeed = 0;
+        }
+        
+        velocity = {
+          x: centralBodyVel.x,
+          y: centralBodyVel.y, // Keep orbit primarily in XZ plane by default
+          z: centralBodyVel.z + orbitalSpeed,
+        };
+      }
+    }
+
+    const newObject: SceneObject = {
+      ...definition,
+      id: newId,
+      position,
+      velocity,
+    } as SceneObject; // Cast because definition is Partial<SceneObject>
+
+    props.onAddObject(newObject);
+    toast({ title: "Real Object Added", description: `${definition.name} added to the scene.` });
   };
 
 
@@ -189,7 +263,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       </div>
       <ScrollArea className="flex-grow p-4 pt-0">
         <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4']} className="w-full">
-          
+
           <AccordionItem value="item-1" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
               <Settings2 className="mr-2 h-5 w-5" /> Object Management
@@ -209,7 +283,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                     <ObjectForm
                       key={selectedObject?.id || editingObjectType || 'new-object-form'}
                       objectType={editingObjectType || selectedObject!.type}
-                      initialData={formInitialData} 
+                      initialData={formInitialData}
                       onSubmit={handleObjectFormSubmit}
                       onCancel={() => { setEditingObjectType(null); props.onSelectObject(null); setFormInitialData(undefined); }}
                       submitButtonText={selectedObject ? "Update Object" : "Add Object"}
@@ -221,13 +295,13 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               <Separator className="my-4 bg-sidebar-border" />
               <Label className="text-sidebar-foreground/80">Scene Objects:</Label>
               {props.objects.length === 0 && <p className="text-sm text-sidebar-muted-foreground">No objects in scene.</p>}
-              <div className="max-h-40 space-y-1 overflow-y-auto"> 
+              <div className="max-h-40 space-y-1 overflow-y-auto">
                 {props.objects.map(obj => (
                   <div key={obj.id}
-                       className={`flex items-center justify-between p-2 rounded-md cursor-pointer 
+                       className={`flex items-center justify-between p-2 rounded-md cursor-pointer
                                    hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
-                                   ${props.selectedObjectId === obj.id 
-                                     ? 'bg-sidebar-accent text-sidebar-accent-foreground' 
+                                   ${props.selectedObjectId === obj.id
+                                     ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                                      : 'bg-sidebar-background text-sidebar-foreground hover:bg-opacity-75'}`}
                        onClick={() => { props.onSelectObject(obj.id); setEditingObjectType(null); }}>
                     <span className="truncate" style={{color: props.selectedObjectId === obj.id ? 'hsl(var(--sidebar-accent-foreground))' : obj.color, fontWeight: props.selectedObjectId === obj.id ? 'bold' : 'normal'}}>{obj.name} ({obj.type}, M: {obj.mass.toFixed(1)})</span>
@@ -258,7 +332,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                   size="sm"
                   onClick={() => props.onSetSimulationStatus('paused')}
                   disabled={props.simulationStatus !== 'running'}
-                  className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground" 
+                  className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
                 >
                   <Pause className="mr-2 h-4 w-4" /> Pause
                 </Button>
@@ -295,14 +369,24 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               )}
             </AccordionContent>
           </AccordionItem>
-          
+
           <AccordionItem value="item-4" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
               <Library className="mr-2 h-5 w-5" /> Real Objects
             </AccordionTrigger>
-            <AccordionContent className="pt-2 space-y-4">
-              <p className="text-sm text-sidebar-muted-foreground">Content for real objects will go here. (e.g., presets for Earth, Sun, Moon, etc.)</p>
-              {/* Add buttons or forms here later to add real objects */}
+            <AccordionContent className="pt-2 space-y-2">
+                <Button size="sm" onClick={() => handleAddRealObject('SUN')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
+                    <Sun className="mr-2 h-4 w-4" /> Add Sun
+                </Button>
+                <Button size="sm" onClick={() => handleAddRealObject('EARTH')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
+                    <Orbit className="mr-2 h-4 w-4" /> Add Earth
+                </Button>
+                <Button size="sm" onClick={() => handleAddRealObject('MOON')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
+                    <MoonIcon className="mr-2 h-4 w-4" /> Add Moon
+                </Button>
+                <Button size="sm" onClick={() => handleAddRealObject('BLACK_HOLE')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
+                    <SigmaSquare className="mr-2 h-4 w-4" /> Add Black Hole {/* SigmaSquare for black hole */}
+                </Button>
             </AccordionContent>
           </AccordionItem>
 
