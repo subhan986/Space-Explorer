@@ -16,6 +16,7 @@ interface SpaceTimeCanvasProps {
   showTrajectories: boolean;
   trajectoryLength: number;
   onObjectsCollidedAndMerged: (absorbedObjectId: string, absorberObjectId: string, absorbedObjectMass: number) => void;
+  showShadows: boolean;
 }
 
 interface SimulationObjectInternal {
@@ -45,12 +46,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   showTrajectories,
   trajectoryLength,
   onObjectsCollidedAndMerged,
+  showShadows,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
+  const directionalLightRef = useRef<THREE.DirectionalLight | null>(null);
 
   const objectsMapRef = useRef<Map<string, MappedObject>>(new Map());
   const trajectoriesRef = useRef<Map<string, THREE.Line>>(new Map());
@@ -321,12 +324,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     controlsRef.current = controls;
     controls.enableDamping = true;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2); // Increased ambient light intensity
     scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // Increased directional light intensity
     directionalLight.position.set(50, 80, 60);
-    directionalLight.castShadow = true;
+    directionalLight.castShadow = showShadows;
     scene.add(directionalLight);
+    directionalLightRef.current = directionalLight;
+
 
     const planeGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE, GRID_DIVISIONS, GRID_DIVISIONS);
     const planeMaterial = new THREE.MeshStandardMaterial({
@@ -357,7 +362,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     });
     resizeObserver.observe(currentMount);
     
-    // Ensure initial size is set correctly by the observer logic or explicitly
     if (cameraRef.current && rendererRef.current) {
         cameraRef.current.aspect = currentMount.clientWidth / currentMount.clientHeight;
         cameraRef.current.updateProjectionMatrix();
@@ -389,7 +393,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       (gridPlaneRef.current?.material as THREE.Material)?.dispose();
       sceneRef.current?.clear();
     };
-  }, []);
+  }, [showShadows]); // Added showShadows to dependency array for initial setup
+
+  useEffect(() => {
+    if (directionalLightRef.current) {
+      directionalLightRef.current.castShadow = showShadows;
+    }
+  }, [showShadows]);
+
 
   useEffect(() => {
     if (!rendererRef.current || !sceneRef.current || !cameraRef.current || !controlsRef.current) return;
@@ -482,8 +493,18 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         const geometry = new THREE.SphereGeometry(simObj.radius, 32, 32);
         const material = new THREE.MeshStandardMaterial({ metalness:0.3, roughness:0.6 });
         if (simObj.textureUrl && textureLoader) {
-            material.map = textureLoader.load(simObj.textureUrl);
-            material.color.set(0xffffff);
+            material.map = textureLoader.load(
+              simObj.textureUrl,
+              undefined, // onLoad callback
+              undefined, // onProgress callback
+              () => { // onError callback
+                console.warn(`Failed to load texture: ${simObj.textureUrl}. Falling back to color.`);
+                material.map = null; // Remove failed texture
+                material.color.set(simObj.color);
+                material.needsUpdate = true;
+              }
+            );
+            material.color.set(0xffffff); // Set base color to white for textures
         } else {
             material.color.set(simObj.color);
         }
@@ -512,13 +533,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             newMappedObject.accretionDiskMesh = accretionDiskMesh;
         }
         objectsMapRef.current.set(objData.id, newMappedObject);
+        mappedObj = newMappedObject; // update mappedObj reference
         trajectoryPointsRef.current.set(objData.id, [newThreePosition.clone()]); 
       } else { 
         let corePhysicsStateReset = false; 
         let visualReset = false; 
 
         simObj.name = objData.name;
-        mappedObj.objectName = objData.name;
+        mappedObj.objectName = objData.name; // Keep MappedObject's name in sync
         simObj.type = objData.type;
 
         if (simObj.radius !== propRadius) {
@@ -541,8 +563,18 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
         if (simObj.textureUrl && simObj.textureUrl !== oldTextureUrl && textureLoader) {
             material.map?.dispose(); 
-            material.map = textureLoader.load(simObj.textureUrl);
-            material.color.set(0xffffff); 
+            material.map = textureLoader.load(
+              simObj.textureUrl,
+              undefined,
+              undefined,
+              () => {
+                console.warn(`Failed to load texture: ${simObj.textureUrl}. Falling back to color.`);
+                material.map = null;
+                material.color.set(objData.color); // Use objData.color as simObj.color might not be up to date
+                material.needsUpdate = true;
+              }
+            );
+            material.color.set(0xffffff);
             visualReset = true;
         } else if (!simObj.textureUrl && oldTextureUrl) { 
             material.map?.dispose();
@@ -553,7 +585,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             material.color.set(objData.color);
             simObj.color = objData.color; 
             visualReset = true;
-        } else if (simObj.textureUrl && simObj.color !== objData.color) {
+        } else if (simObj.textureUrl && simObj.color !== objData.color) { // Update simObj.color even if texture is used, for trajectories
             simObj.color = objData.color;
         }
         
@@ -689,7 +721,12 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           if (objData.textureUrl && textureLoaderRef.current) {
               if(material.map?.image?.src !== objData.textureUrl || !material.map) { 
                 material.map?.dispose();
-                material.map = textureLoaderRef.current.load(objData.textureUrl);
+                material.map = textureLoaderRef.current.load(
+                  objData.textureUrl,
+                  undefined,
+                  undefined,
+                  () => { material.map = null; material.color.set(objData.color); material.needsUpdate = true;}
+                );
               }
               material.color.set(0xffffff);
           } else {
@@ -760,5 +797,3 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
-
-    
