@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X } from 'lucide-react';
+import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X, Library } from 'lucide-react';
 import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, AISuggestion, Vector3, MassiveObject } from '@/types/spacetime';
 import { suggestParameters, SuggestParametersInput } from '@/ai/flows/suggest-parameters';
@@ -188,7 +188,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         <Separator className="mb-4 bg-sidebar-border" />
       </div>
       <ScrollArea className="flex-grow p-4 pt-0">
-        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full">
+        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4']} className="w-full">
           
           <AccordionItem value="item-1" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
@@ -295,6 +295,16 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               )}
             </AccordionContent>
           </AccordionItem>
+          
+          <AccordionItem value="item-4" className="border-b-0">
+            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
+              <Library className="mr-2 h-5 w-5" /> Real Objects
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 space-y-4">
+              <p className="text-sm text-sidebar-muted-foreground">Content for real objects will go here. (e.g., presets for Earth, Sun, Moon, etc.)</p>
+              {/* Add buttons or forms here later to add real objects */}
+            </AccordionContent>
+          </AccordionItem>
 
           <AccordionItem value="item-3" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
@@ -345,6 +355,3 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 };
 
 export default ControlPanel;
-
-
-    
