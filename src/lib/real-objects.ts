@@ -14,10 +14,8 @@ export interface RealObjectDefinition extends Omit<Partial<SceneObject>, 'id' | 
   orbits?: 'Sun' | 'Earth'; // Hints for orbital placement
 }
 
-// Using generic 1024x512 placeholders for textures.
-// The data-ai-hint would be associated with finding actual textures based on object name.
-// e.g., "sun texture", "earth map", "moon surface".
-const placeholderTexture = 'https://placehold.co/1024x512.png';
+// Using dimensioned placeholders for textures.
+// For example, 2048x1024 is a common size for equirectangular texture maps.
 
 export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
   SUN: {
@@ -25,36 +23,37 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     type: 'massive',
     mass: 100000,
     radius: 30,
-    color: '#FFD700', 
-    textureUrl: placeholderTexture, // data-ai-hint="sun texture"
+    color: '#FFD700',
+    textureUrl: 'https://placehold.co/2048x1024.png', // Represents sun surface texture
     basePosition: { x: 0, y: 0, z: 0 },
     baseVelocity: { x: 0, y: 0, z: 0 },
   },
   EARTH: {
     name: 'Earth',
     type: 'orbiter',
-    mass: 300, 
+    mass: 300,
     radius: 8,
-    color: '#4169E1', 
-    textureUrl: placeholderTexture, // data-ai-hint="earth map"
-    orbits: 'Sun', 
+    color: '#4169E1',
+    textureUrl: 'https://placehold.co/2048x1024.png', // Represents Earth map texture
+    orbits: 'Sun',
   },
   MOON: {
     name: 'Moon',
     type: 'orbiter',
-    mass: 3, 
+    mass: 3,
     radius: 2.5,
-    color: '#C0C0C0', 
-    textureUrl: placeholderTexture, // data-ai-hint="moon surface"
-    orbits: 'Earth', 
+    color: '#C0C0C0',
+    textureUrl: 'https://placehold.co/1024x512.png', // Represents Moon surface texture
+    orbits: 'Earth',
   },
   BLACK_HOLE: {
     name: 'Black Hole',
     type: 'massive',
-    mass: 500000, 
-    radius: 15,    
-    color: '#000000', 
-    // No texture for black hole, color will be used.
+    mass: 500000,
+    radius: 15,
+    color: '#000000',
+    // No texture for black hole sphere, color will be used.
+    // Accretion disk will be added visually in SpaceTimeCanvas.
     basePosition: { x: 0, y: 0, z: 0 },
     baseVelocity: { x: 0, y: 0, z: 0 },
   },
