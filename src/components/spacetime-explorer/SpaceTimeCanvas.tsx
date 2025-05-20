@@ -34,6 +34,7 @@ interface SimulationObjectInternal {
 interface MappedObject {
   mainMesh: THREE.Mesh;
   accretionDiskMesh?: THREE.Mesh;
+  objectName: string; // To identify black holes for animation
 }
 
 const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
@@ -359,6 +360,13 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             updateTrajectories();
             deformGrid();
 
+            // Animate accretion disks
+            objectsMapRef.current.forEach((mappedObj) => {
+              if (mappedObj.objectName === 'Black Hole' && mappedObj.accretionDiskMesh) {
+                mappedObj.accretionDiskMesh.rotation.y += 0.002; // Spin around local Y-axis
+              }
+            });
+
             const newForceData = Array.from(simulationObjectsRef.current.values()).map(simObj => ({
               id: simObj.id, name: simObj.name, force: simObj.netForceMagnitude,
             }));
@@ -412,7 +420,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             (mappedObj.mainMesh.material as THREE.MeshStandardMaterial).map?.dispose();
             (mappedObj.mainMesh.material as THREE.MeshStandardMaterial).dispose();
             if (mappedObj.accretionDiskMesh) {
-                scene.remove(mappedObj.accretionDiskMesh);
+                scene.remove(mappedObj.accretionDiskMesh); // It's a child, so removed with parent, but good to be explicit for disposal
                 mappedObj.accretionDiskMesh.geometry.dispose();
                 (mappedObj.accretionDiskMesh.material as THREE.Material).dispose();
             }
@@ -433,14 +441,20 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         scene.add(threeMesh);
         threeMesh.position.copy(newThreePosition);
         
-        const newMappedObject: MappedObject = { mainMesh: threeMesh };
+        const newMappedObject: MappedObject = { mainMesh: threeMesh, objectName: objData.name };
 
         // Add accretion disk for Black Hole
         if (objData.name === 'Black Hole') {
-            const diskInnerRadius = simObj.radius * 1.5; // Slightly larger than sphere
-            const diskOuterRadius = simObj.radius * 5;   // Significantly larger disk
+            const diskInnerRadius = simObj.radius * 1.5; 
+            const diskOuterRadius = simObj.radius * 5;   
             const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
-            const diskMaterial = new THREE.MeshBasicMaterial({ color: 0xFFA500, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }); // Orange, semi-transparent
+            const diskMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xFFA500, // Orange
+                side: THREE.DoubleSide, 
+                transparent: true, 
+                opacity: 0.6, // Slightly reduced opacity for glow effect
+                blending: THREE.AdditiveBlending // For glowy effect
+            });
             const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
             accretionDiskMesh.rotation.x = Math.PI / 2; // Orient it flat
             threeMesh.add(accretionDiskMesh); // Add as child to the black hole sphere
@@ -450,9 +464,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         trajectoryPointsRef.current.set(objData.id, [newThreePosition.clone()]);
       } else { // Object exists, update it
         let corePhysicsStateReset = false;
-        let visualReset = false; // Flag to track if visual properties like radius, color, or texture changed
+        let visualReset = false; 
 
-        simObj.name = objData.name;
+        simObj.name = objData.name; // Update name for existing simObj
+        mappedObj.objectName = objData.name; // Update name in mappedObj too for animation lookup
         simObj.type = objData.type;
 
         if (simObj.radius !== propRadius) {
@@ -461,10 +476,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
            threeMesh.geometry = new THREE.SphereGeometry(simObj.radius, 32, 32);
            visualReset = true;
 
-           if (objData.name === 'Black Hole' && mappedObj.accretionDiskMesh) {
+           if (mappedObj.objectName === 'Black Hole' && mappedObj.accretionDiskMesh) {
              mappedObj.accretionDiskMesh.geometry.dispose();
              const diskInnerRadius = simObj.radius * 1.5;
-             const diskOuterRadius = simObj.radius * 5; // Update disk size as well
+             const diskOuterRadius = simObj.radius * 5; 
              mappedObj.accretionDiskMesh.geometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
            }
         }
@@ -476,39 +491,46 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         if (simObj.textureUrl && simObj.textureUrl !== oldTextureUrl && textureLoader) {
             material.map?.dispose();
             material.map = textureLoader.load(simObj.textureUrl);
-            material.color.set(0xffffff); // Ensure texture is not tinted
+            material.color.set(0xffffff); 
             visualReset = true;
-        } else if (!simObj.textureUrl && oldTextureUrl) { // Texture removed
+        } else if (!simObj.textureUrl && oldTextureUrl) { 
             material.map?.dispose();
             material.map = null;
-            material.color.set(objData.color); // Revert to base color
+            material.color.set(objData.color); 
             visualReset = true;
-        } else if (!simObj.textureUrl && simObj.color !== objData.color) { // Color changed, no texture
+        } else if (!simObj.textureUrl && simObj.color !== objData.color) { 
             material.color.set(objData.color);
             simObj.color = objData.color;
             visualReset = true;
         } else if (simObj.textureUrl && simObj.color !== objData.color) {
-            // If there's a texture, objData.color is mainly for trajectory, but update simObj
             simObj.color = objData.color;
         }
         
-        // Accretion Disk handling for existing black holes
-        if (objData.name === 'Black Hole') {
-            if (!mappedObj.accretionDiskMesh) { // Disk doesn't exist, create it
+        if (mappedObj.objectName === 'Black Hole') {
+            if (!mappedObj.accretionDiskMesh) { 
                 const diskInnerRadius = simObj.radius * 1.5;
                 const diskOuterRadius = simObj.radius * 5;
                 const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
-                const diskMaterial = new THREE.MeshBasicMaterial({ color: 0xFFA500, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+                const diskMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xFFA500, 
+                    side: THREE.DoubleSide, 
+                    transparent: true, 
+                    opacity: 0.6,
+                    blending: THREE.AdditiveBlending
+                });
                 const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
                 accretionDiskMesh.rotation.x = Math.PI / 2;
                 threeMesh.add(accretionDiskMesh);
                 mappedObj.accretionDiskMesh = accretionDiskMesh;
                 visualReset = true;
-            } else { // Disk exists, ensure its material is correct
-                (mappedObj.accretionDiskMesh.material as THREE.MeshBasicMaterial).color.set(0xFFA500);
-                (mappedObj.accretionDiskMesh.material as THREE.MeshBasicMaterial).opacity = 0.7;
+            } else { // Disk exists, ensure its material properties are correct
+                const diskMaterial = mappedObj.accretionDiskMesh.material as THREE.MeshBasicMaterial;
+                diskMaterial.color.set(0xFFA500);
+                diskMaterial.opacity = 0.6;
+                diskMaterial.blending = THREE.AdditiveBlending;
+                diskMaterial.needsUpdate = true; 
             }
-        } else { // Not a black hole, ensure no disk exists
+        } else { 
             if (mappedObj.accretionDiskMesh) {
                 threeMesh.remove(mappedObj.accretionDiskMesh);
                 mappedObj.accretionDiskMesh.geometry.dispose();
@@ -519,10 +541,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         }
 
 
-        // Only reset physics state (pos, vel) if simulation is NOT running OR if mass changed
         if (simulationStatus !== 'running' || simObj.mass !== propMass) {
-            simObj.mass = propMass; // Update mass regardless
-            // If sim not running, or if mass changed, then apply prop pos/vel
+            simObj.mass = propMass; 
             if (simulationStatus !== 'running' || (simObj.mass !== propMass && propMass !== undefined)) {
                 if (isValidVector(propPos)) simObj.threePosition.set(propPos.x, propPos.y, propPos.z);
                 if (isValidVector(propVel)) simObj.threeVelocity.set(propVel.x, propVel.y, propVel.z);
@@ -532,32 +552,30 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         }
 
         if (corePhysicsStateReset || (visualReset && simulationStatus !== 'running')) {
-            // Clear and reset trajectory if physics state was reset or if visuals changed while not running
             trajectoryPointsRef.current.set(objData.id, isValidVector(simObj.threePosition) ? [simObj.threePosition.clone()] : []);
             const trajectoryLine = trajectoriesRef.current.get(objData.id);
             if (trajectoryLine) {
-              scene.remove(trajectoryLine); // Remove old line from scene
-              trajectoryLine.geometry.dispose(); // Dispose old geometry
-              (trajectoryLine.material as THREE.Material).dispose(); // Dispose old material
-              trajectoriesRef.current.delete(objData.id); // Remove from map
+              scene.remove(trajectoryLine); 
+              trajectoryLine.geometry.dispose(); 
+              (trajectoryLine.material as THREE.Material).dispose(); 
+              trajectoriesRef.current.delete(objData.id); 
             }
         }
       }
     });
 
-    // Remove objects from Three.js scene and simulation map if they are no longer in props.objects
     simulationObjectsRef.current.forEach((simObj, id) => {
       if (!currentPropIds.has(id)) {
         const mappedObjToRemove = objectsMapRef.current.get(id);
         if (mappedObjToRemove) {
-          scene.remove(mappedObjToRemove.mainMesh); // Remove main mesh
+          scene.remove(mappedObjToRemove.mainMesh); 
           mappedObjToRemove.mainMesh.geometry.dispose();
           const oldMaterial = mappedObjToRemove.mainMesh.material as THREE.MeshStandardMaterial;
-          oldMaterial.map?.dispose(); // Dispose texture map if exists
+          oldMaterial.map?.dispose(); 
           oldMaterial.dispose();
 
-          if (mappedObjToRemove.accretionDiskMesh) { // If it had an accretion disk
-            mappedObjToRemove.mainMesh.remove(mappedObjToRemove.accretionDiskMesh); // Remove from parent first
+          if (mappedObjToRemove.accretionDiskMesh) { 
+            mappedObjToRemove.mainMesh.remove(mappedObjToRemove.accretionDiskMesh); 
             mappedObjToRemove.accretionDiskMesh.geometry.dispose();
             (mappedObjToRemove.accretionDiskMesh.material as THREE.Material).dispose();
           }
@@ -576,17 +594,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     });
     simulationObjectsRef.current = newSimMap;
 
-    // If simulation is not running, ensure grid and trajectories reflect current state
     if (simulationStatus !== 'running') {
       deformGrid();
-      updateTrajectories(); // Call to re-draw trajectories based on current points if needed
+      updateTrajectories(); 
     }
-  }, [objects, simulationStatus, isValidVector, deformGrid, updateTrajectories]); // Added deformGrid and updateTrajectories
+  }, [objects, simulationStatus, isValidVector, deformGrid, updateTrajectories]); 
 
-  // Effect for handling simulation stop: reset objects to their prop-defined initial states
   useEffect(() => {
     if (simulationStatus === 'stopped') {
-      // Clear all existing trajectories from the scene and memory
       trajectoriesRef.current.forEach((line) => {
         if (line.parent) sceneRef.current?.remove(line);
         line.geometry.dispose();
@@ -595,7 +610,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       trajectoriesRef.current.clear();
       trajectoryPointsRef.current.clear();
 
-      // Update simulationObjectsRef to reflect the initial state from props
       const updatedSimMap = new Map<string, SimulationObjectInternal>();
       objects.forEach(objData => {
         const pos = isValidVector(objData.position) ? objData.position : {x:0, y:0, z:0};
@@ -610,20 +624,17 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           id: objData.id, type: objData.type, mass: propMass,
           threePosition: threePos, threeVelocity: threeVel,
           radius: propRadius, color: objData.color, name: objData.name,
-          textureUrl: objData.textureUrl, netForceMagnitude: 0, // Reset force
+          textureUrl: objData.textureUrl, netForceMagnitude: 0, 
         });
 
-        // Update the Three.js mesh to reflect this initial state
         const mappedObj = objectsMapRef.current.get(objData.id);
         if (mappedObj?.mainMesh) {
           const threeMesh = mappedObj.mainMesh;
           threeMesh.position.copy(threePos);
-          // Update geometry if radius changed
           if ((threeMesh.geometry as THREE.SphereGeometry).parameters.radius !== propRadius) {
             threeMesh.geometry.dispose();
             threeMesh.geometry = new THREE.SphereGeometry(propRadius, 32, 32);
           }
-          // Update material (color/texture)
           const material = threeMesh.material as THREE.MeshStandardMaterial;
           if (objData.textureUrl && textureLoaderRef.current) {
               if(material.map?.image?.src !== objData.textureUrl || !material.map) { 
@@ -636,39 +647,47 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
               material.map = null;
               material.color.set(objData.color);
           }
-          // Update or create/remove accretion disk if stopped
-          if (objData.name === 'Black Hole') {
+          if (mappedObj.objectName === 'Black Hole') {
             const diskInnerRadius = propRadius * 1.5;
             const diskOuterRadius = propRadius * 5;
             if (mappedObj.accretionDiskMesh) {
-              // Update existing disk geometry if radius changed
-              if ((mappedObj.accretionDiskMesh.geometry as THREE.RingGeometry).parameters.innerRadius !== diskInnerRadius || 
-                  (mappedObj.accretionDiskMesh.geometry as THREE.RingGeometry).parameters.outerRadius !== diskOuterRadius) {
-                mappedObj.accretionDiskMesh.geometry.dispose();
-                mappedObj.accretionDiskMesh.geometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
+              const diskMesh = mappedObj.accretionDiskMesh;
+              if ((diskMesh.geometry as THREE.RingGeometry).parameters.innerRadius !== diskInnerRadius || 
+                  (diskMesh.geometry as THREE.RingGeometry).parameters.outerRadius !== diskOuterRadius) {
+                diskMesh.geometry.dispose();
+                diskMesh.geometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
               }
-              (mappedObj.accretionDiskMesh.material as THREE.MeshBasicMaterial).color.set(0xFFA500); // Ensure color
-            } else { // Create disk if it doesn't exist
+              const diskMaterial = diskMesh.material as THREE.MeshBasicMaterial;
+              diskMaterial.color.set(0xFFA500);
+              diskMaterial.opacity = 0.6;
+              diskMaterial.blending = THREE.AdditiveBlending;
+              diskMaterial.needsUpdate = true;
+            } else { 
                 const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
-                const diskMaterial = new THREE.MeshBasicMaterial({ color: 0xFFA500, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+                const diskMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xFFA500, 
+                    side: THREE.DoubleSide, 
+                    transparent: true, 
+                    opacity: 0.6,
+                    blending: THREE.AdditiveBlending 
+                });
                 const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
                 accretionDiskMesh.rotation.x = Math.PI / 2;
                 threeMesh.add(accretionDiskMesh);
                 mappedObj.accretionDiskMesh = accretionDiskMesh;
             }
-          } else if (mappedObj.accretionDiskMesh) { // Remove disk if not a black hole
+          } else if (mappedObj.accretionDiskMesh) { 
              threeMesh.remove(mappedObj.accretionDiskMesh);
              mappedObj.accretionDiskMesh.geometry.dispose();
             (mappedObj.accretionDiskMesh.material as THREE.Material).dispose();
              delete mappedObj.accretionDiskMesh;
           }
         }
-        // Initialize trajectory points for the new starting position
         trajectoryPointsRef.current.set(objData.id, [threePos.clone()]);
       });
       simulationObjectsRef.current = updatedSimMap;
-      updateTrajectories(); // Redraw trajectories based on the reset state
-      deformGrid(); // Deform grid based on the reset state
+      updateTrajectories(); 
+      deformGrid(); 
     }
   }, [simulationStatus, objects, isValidVector, updateTrajectories, deformGrid]);
 
