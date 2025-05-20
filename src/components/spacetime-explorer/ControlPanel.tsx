@@ -1,4 +1,3 @@
-
 // src/components/spacetime-explorer/ControlPanel.tsx
 'use client';
 
@@ -13,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass } from 'lucide-react';
 import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, Vector3, MassiveObject, LightingMode } from '@/types/spacetime';
+import SpacecraftDesigner2D from './SpacecraftDesigner2D'; // Import the new component
 
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -88,7 +88,10 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       if (centralBody) {
         const actualCentralBodyRadius = centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS;
         const actualOrbiterRadius = DEFAULT_ORBITER_OBJECT_RADIUS;
-        const dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 1.2, actualOrbiterRadius * 1.5);
+        
+        let dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 0.5); // Ensure it's clear of the radius
+        dynamicClearanceOffset = Math.max(dynamicClearanceOffset, actualOrbiterRadius * 1.2); // And clear of orbiter too
+
         const distance = actualCentralBodyRadius + actualOrbiterRadius + dynamicClearanceOffset;
         
         const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
@@ -97,7 +100,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         baseInitialData.position = {
           x: centralBodyPos.x + distance,
           y: centralBodyPos.y,
-          z: centralBodyPos.z,
+          z: centralBodyPos.z, // Keep orbit horizontal by default
         };
 
         let orbitalSpeed = 0;
@@ -110,8 +113,8 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         
         baseInitialData.velocity = {
           x: centralBodyVel.x,
-          y: centralBodyVel.y,
-          z: centralBodyVel.z + orbitalSpeed,
+          y: centralBodyVel.y, 
+          z: centralBodyVel.z + orbitalSpeed, // Apply velocity along Z for horizontal orbit
         };
       }
     }
@@ -165,12 +168,15 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       if (centralBody) {
         const actualCentralBodyRadius = centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS;
         const actualOrbiterRadius = definition.radius; 
-        const dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 1.2, definition.radius * 2);
+        
+        let dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 0.5);
+        dynamicClearanceOffset = Math.max(dynamicClearanceOffset, actualOrbiterRadius * 1.2);
         const distance = actualCentralBodyRadius + actualOrbiterRadius + dynamicClearanceOffset;
         
         const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
         const centralBodyVel = centralBody.velocity || { x: 0, y: 0, z: 0 };
 
+        // Default to placing along X axis, velocity along Z for horizontal orbit
         position = {
           x: centralBodyPos.x + distance, 
           y: centralBodyPos.y,
@@ -188,12 +194,27 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
           y: centralBodyVel.y,
           z: centralBodyVel.z + orbitalSpeed, 
         };
+
+        // Special case for ISS to orbit Earth primarily in XY plane (adjust Z pos, Y vel) if Earth exists
+        if (objectKey === 'ISS' && centralBody.name === 'Earth') {
+            position = {
+                x: centralBodyPos.x,
+                y: centralBodyPos.y + distance, // Place above Earth along Y
+                z: centralBodyPos.z,
+            };
+            velocity = {
+                x: centralBodyVel.x + orbitalSpeed, // Velocity along X for orbit in XY plane
+                y: centralBodyVel.y,
+                z: centralBodyVel.z,
+            };
+        }
       }
     }
 
-    if (objectKey === 'HALLEYS_COMET' && !definition.orbits) {
-        position = definition.basePosition || { x:0,y:0,z:0};
-        velocity = definition.baseVelocity || { x:0,y:0,z:0};
+    // For Halley's Comet, ensure base position and velocity are used if no specific orbit is defined or parent found
+    if (objectKey === 'HALLEYS_COMET' && (!definition.orbits || !props.objects.find(o => o.name === definition.orbits))) {
+        position = definition.basePosition || {x:0,y:0,z:0}; // Use its defined unique starting point
+        velocity = definition.baseVelocity || {x:0,y:0,z:0}; // And its unique velocity
     }
 
 
@@ -235,8 +256,8 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 
               {(editingObjectType || selectedObject) && (
                 <Card className="bg-card text-card-foreground border-sidebar-border">
-                  <CardHeader>
-                    <CardTitle className="text-sidebar-foreground">{editingObjectType ? `Add New ${editingObjectType === 'massive' ? 'Massive' : 'Orbiter'} Object` : `Edit: ${selectedObject?.name}`}</CardTitle>
+                  <CardHeader className="px-3 py-2">
+                    <CardTitle className="text-md text-sidebar-foreground">{editingObjectType ? `Add New ${editingObjectType === 'massive' ? 'Massive' : 'Orbiter'} Object` : `Edit: ${selectedObject?.name}`}</CardTitle>
                   </CardHeader>
                   <CardContent className="px-3 py-4 pt-0">
                     <ObjectForm
@@ -397,14 +418,8 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
               <DraftingCompass className="mr-2 h-5 w-5" /> Spacecraft Design
             </AccordionTrigger>
-            <AccordionContent className="pt-2 space-y-4">
-              <p className="text-sm text-sidebar-muted-foreground">
-                This section is for the future 2D spacecraft designer. Here, you'll be able to use a 2D interface to select components (engines, hulls, sensors, etc.) and drag-and-drop them to assemble your custom spacecraft. Once designed, you'll be able to 'build' it and launch it into the 3D simulation.
-              </p>
-               {/* Placeholder for where the 2D designer canvas/tools would go */}
-              <div className="w-full h-64 bg-input rounded-md flex items-center justify-center border border-sidebar-border">
-                <p className="text-sidebar-muted-foreground text-center p-4">2D Spacecraft Design Canvas (Coming Soon)</p>
-              </div>
+            <AccordionContent className="pt-2">
+              <SpacecraftDesigner2D />
             </AccordionContent>
           </AccordionItem>
 
@@ -415,5 +430,3 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 };
 
 export default ControlPanel;
-
-    
