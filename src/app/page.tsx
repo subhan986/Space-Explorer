@@ -6,7 +6,7 @@ import React, { useState, useCallback } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarContent, SidebarTrigger } from '@/components/ui/sidebar';
 import SpaceTimeCanvas from '@/components/spacetime-explorer/SpaceTimeCanvas';
 import ControlPanel from '@/components/spacetime-explorer/ControlPanel';
-import type { SceneObject } from '@/types/spacetime';
+import type { SceneObject, LightingMode } from '@/types/spacetime';
 import { DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
 import { Settings } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,8 @@ export default function SpacetimeExplorerPage() {
   const [simulationSpeed, setSimulationSpeed] = useState<number>(DEFAULT_SIMULATION_SPEED);
   const [showTrajectories, setShowTrajectories] = useState<boolean>(true);
   const [trajectoryLength, setTrajectoryLength] = useState<number>(DEFAULT_TRAJECTORY_LENGTH);
+  const [showShadows, setShowShadows] = useState<boolean>(true);
+  const [lightingMode, setLightingMode] = useState<LightingMode>("Realistic Solar");
   const { toast } = useToast();
 
   const handleAddObject = useCallback((object: SceneObject) => {
@@ -48,12 +50,10 @@ export default function SpacetimeExplorerPage() {
     setObjects(prevObjects => {
       const absorberObject = prevObjects.find(obj => obj.id === absorberObjectId);
       
-      // If absorber was already removed in a concurrent merge, do nothing for this specific event
       if (!absorberObject) return prevObjects;
 
       const newAbsorberMass = (absorberObject.mass || 0) + absorbedObjectMass;
 
-      // Filter out the absorbed object and update the mass of the absorber object
       return prevObjects
         .filter(obj => obj.id !== absorbedObjectId)
         .map(obj => 
@@ -80,7 +80,7 @@ export default function SpacetimeExplorerPage() {
   return (
     <SidebarProvider defaultOpen={true}>
       <Sidebar
-        collapsible="offcanvas" // Changed from "icon" to "offcanvas"
+        collapsible="offcanvas"
         className="max-w-sm" 
         variant="floating" 
       >
@@ -92,6 +92,8 @@ export default function SpacetimeExplorerPage() {
             simulationSpeed={simulationSpeed}
             showTrajectories={showTrajectories}
             trajectoryLength={trajectoryLength}
+            showShadows={showShadows}
+            lightingMode={lightingMode}
             onAddObject={handleAddObject}
             onUpdateObject={handleUpdateObject}
             onRemoveObject={handleRemoveObject}
@@ -101,6 +103,8 @@ export default function SpacetimeExplorerPage() {
             onResetSimulation={handleResetSimulation}
             onSetShowTrajectories={setShowTrajectories}
             onSetTrajectoryLength={setTrajectoryLength}
+            onSetShowShadows={setShowShadows}
+            onSetLightingMode={setLightingMode}
           />
         </SidebarContent>
       </Sidebar>
@@ -109,7 +113,6 @@ export default function SpacetimeExplorerPage() {
             <SidebarTrigger className="rounded-full">
                 <Settings />
             </SidebarTrigger>
-            {/* Adjusted text size for better mobile display */}
             <h1 className="text-md md:text-lg font-semibold text-foreground">3D Visualization Area</h1>
         </header>
         <main className="flex-1 overflow-hidden p-1 md:p-2">
@@ -121,10 +124,11 @@ export default function SpacetimeExplorerPage() {
               showTrajectories={showTrajectories}
               trajectoryLength={trajectoryLength}
               onObjectsCollidedAndMerged={handleObjectsCollidedAndMerged}
+              showShadows={showShadows}
+              lightingMode={lightingMode}
             />
         </main>
       </SidebarInset>
     </SidebarProvider>
   );
 }
-

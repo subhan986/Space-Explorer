@@ -42,3 +42,5 @@ export interface AISuggestion {
   suggestedVelocity: number;
   explanation: string;
 }
+
+export type LightingMode = "Realistic Solar" | "Ambient Glow" | "Dramatic Edge";

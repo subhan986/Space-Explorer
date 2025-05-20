@@ -10,11 +10,10 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw } from 'lucide-react';
+import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap } from 'lucide-react';
 import ObjectForm from './ObjectForm';
-import type { SceneObject, ObjectType, AISuggestion, Vector3, MassiveObject } from '@/types/spacetime';
+import type { SceneObject, ObjectType, AISuggestion, Vector3, MassiveObject, LightingMode } from '@/types/spacetime';
 import { suggestParameters, SuggestParametersInput } from '@/ai/flows/suggest-parameters';
-// import { generateTexture } from '@/ai/flows/generate-texture-flow'; // Removed AI texture generation
 import { useToast } from '@/hooks/use-toast';
 import {
   MIN_SIMULATION_SPEED, MAX_SIMULATION_SPEED, DEFAULT_SIMULATION_SPEED,
@@ -24,6 +23,8 @@ import {
 } from '@/lib/constants';
 import { REAL_OBJECT_DEFINITIONS } from '@/lib/real-objects';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 interface ControlPanelProps {
   objects: SceneObject[];
@@ -32,6 +33,8 @@ interface ControlPanelProps {
   simulationSpeed: number;
   showTrajectories: boolean;
   trajectoryLength: number;
+  showShadows: boolean;
+  lightingMode: LightingMode;
   onAddObject: (object: SceneObject) => void;
   onUpdateObject: (object: SceneObject) => void;
   onRemoveObject: (objectId: string) => void;
@@ -41,6 +44,8 @@ interface ControlPanelProps {
   onResetSimulation: () => void;
   onSetShowTrajectories: (show: boolean) => void;
   onSetTrajectoryLength: (length: number) => void;
+  onSetShowShadows: (show: boolean) => void;
+  onSetLightingMode: (mode: LightingMode) => void;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = (props) => {
@@ -49,7 +54,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [isAISuggesting, setIsAISuggesting] = useState(false);
   const [formInitialData, setFormInitialData] = useState<Partial<SceneObject> | undefined>(undefined);
-  // const [generatingTextures, setGeneratingTextures] = useState<Record<string, boolean>>({}); // Removed
 
 
   const selectedObject = props.objects.find(obj => obj.id === props.selectedObjectId);
@@ -57,63 +61,55 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   useEffect(() => {
     if (selectedObject) {
       setFormInitialData(selectedObject);
-      setEditingObjectType(null); // Clear editing type if an object is selected
-    } else if (!editingObjectType) { // If no object selected and not actively adding new
+      setEditingObjectType(null); 
+    } else if (!editingObjectType) { 
       setFormInitialData(undefined);
     }
-    // Only depend on selectedObject and editingObjectType to avoid re-renders from formInitialData itself
   }, [selectedObject, editingObjectType]);
 
 
   const handleAddObjectClick = (type: ObjectType) => {
-    props.onSelectObject(null); // Deselect any currently selected object
-    setEditingObjectType(type); // Set the type of object to be added
+    props.onSelectObject(null); 
+    setEditingObjectType(type); 
 
-    // Define base initial data for new objects
     let baseInitialData: Partial<SceneObject> = {
-      mass: type === 'massive' ? 1000 : 1, // Default mass based on type
+      mass: type === 'massive' ? 1000 : 1, 
       radius: type === 'massive' ? DEFAULT_MASSIVE_OBJECT_RADIUS : DEFAULT_ORBITER_OBJECT_RADIUS,
       color: type === 'massive' ? DEFAULT_MASSIVE_OBJECT_COLOR : DEFAULT_ORBITER_OBJECT_COLOR,
-      position: { x: 0, y: 0, z: 0 }, // Default position at origin
-      velocity: { x: 0, y: 0, z: 0 }, // Default velocity zero
+      position: { x: 0, y: 0, z: 0 }, 
+      velocity: { x: 0, y: 0, z: 0 }, 
     };
 
-    // If adding an orbiter, try to place it in orbit around the most massive object
     if (type === 'orbiter') {
       const massiveObjects = props.objects.filter(obj => obj.type === 'massive') as MassiveObject[];
       let centralBody: MassiveObject | null = null;
       if (massiveObjects.length > 0) {
-        // Find the most massive object to orbit around
         centralBody = massiveObjects.reduce((prev, current) => (prev.mass > current.mass) ? prev : current);
       }
 
       if (centralBody) {
         const actualCentralBodyRadius = centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS;
-        const actualOrbiterRadius = DEFAULT_ORBITER_OBJECT_RADIUS; // Use default for new orbiter
-        // Ensure clearance is significant, especially for large central bodies
+        const actualOrbiterRadius = DEFAULT_ORBITER_OBJECT_RADIUS;
         const dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 1.0);
         const distance = actualCentralBodyRadius + actualOrbiterRadius + dynamicClearanceOffset;
         
         const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
         const centralBodyVel = centralBody.velocity || { x: 0, y: 0, z: 0 };
 
-        // Initial position offset in X for a horizontal orbit in XZ plane
         baseInitialData.position = {
           x: centralBodyPos.x + distance,
           y: centralBodyPos.y,
           z: centralBodyPos.z,
         };
 
-        // Calculate orbital speed for a circular orbit: v = sqrt(G * M / r)
         let orbitalSpeed = 0;
         if (centralBody.mass > 0 && distance > 0) {
            orbitalSpeed = Math.sqrt((G_CONSTANT * centralBody.mass) / distance);
         }
-        if (!isFinite(orbitalSpeed)) { // Prevent NaN/Infinity issues
+        if (!isFinite(orbitalSpeed)) { 
           orbitalSpeed = 0;
         }
         
-        // Initial velocity in Z for a horizontal orbit, relative to central body's velocity
         baseInitialData.velocity = {
           x: centralBodyVel.x,
           y: centralBodyVel.y,
@@ -121,22 +117,22 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         };
       }
     }
-    setFormInitialData(baseInitialData); // Set this initial data for the form
-    setAiSuggestion(null); // Clear any previous AI suggestions
+    setFormInitialData(baseInitialData); 
+    setAiSuggestion(null); 
   };
 
   const handleObjectFormSubmit = (data: Partial<SceneObject>) => {
-    if (data.id) { // If ID exists, it's an update
+    if (data.id) { 
       props.onUpdateObject(data as SceneObject);
       toast({ title: "Object Updated", description: `${data.name} properties saved.` });
-    } else { // No ID, it's a new object
+    } else { 
       const newId = `obj_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const fullObjectData = { ...data, id: newId, type: editingObjectType! } as SceneObject;
       props.onAddObject(fullObjectData);
       toast({ title: "Object Added", description: `${data.name} added to the scene.` });
     }
-    setEditingObjectType(null); // Reset editing state
-    setFormInitialData(undefined); // Clear form data
+    setEditingObjectType(null); 
+    setFormInitialData(undefined); 
   };
 
   const handleAISuggest = async () => {
@@ -146,14 +142,12 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       const input: SuggestParametersInput = {
         scenarioDescription: "User is setting up a 3D gravity simulation.",
       };
-      // Determine if we are suggesting for a new object or an existing one
       const targetForAISuggestion = formInitialData || selectedObject;
 
       if (targetForAISuggestion) {
         input.currentMass = targetForAISuggestion.mass;
         if (targetForAISuggestion.velocity) {
           const v = targetForAISuggestion.velocity;
-          // Use magnitude of velocity vector for suggestion context if available
           input.currentVelocity = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
         }
       }
@@ -171,32 +165,27 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 
  const applyAISuggestion = () => {
     if (!aiSuggestion) return;
-    const baseData = formInitialData || selectedObject || {}; // Use current form data or selected object data
+    const baseData = formInitialData || selectedObject || {}; 
     let newVelocity: Vector3;
     const currentVel = baseData.velocity || { x: 0, y: 0, z: 0 };
 
-    // Apply suggested velocity magnitude based on context
-    if (editingObjectType === 'orbiter' && !selectedObject) { // New orbiter being added
-      // For new orbiters, AI often suggests velocity relative to an orbit, so add to Z
+    if (editingObjectType === 'orbiter' && !selectedObject) { 
       newVelocity = { x: currentVel.x, y: currentVel.y, z: currentVel.z + aiSuggestion.suggestedVelocity };
-    } else { // Editing existing object or new massive object
-      // For others, apply primarily to X or as a general magnitude change
+    } else { 
       newVelocity = { x: currentVel.x + aiSuggestion.suggestedVelocity, y: currentVel.y, z: currentVel.z };
     }
 
     const suggestedData: Partial<SceneObject> = {
-        ...baseData, // Keep other properties
+        ...baseData, 
         mass: aiSuggestion.suggestedMass,
         velocity: newVelocity,
-        // If it's a new object, ensure its type is set from editingObjectType
         ...(editingObjectType && !baseData.type && { type: editingObjectType }),
     };
-    // Update formInitialData to pre-fill the form with suggestions
-    if (editingObjectType || selectedObject) { // Ensure form is active for new or editing
+    if (editingObjectType || selectedObject) { 
       setFormInitialData(suggestedData);
       toast({ title: "AI Suggestion Applied", description: "Parameters updated in the form. Review and save." });
     }
-    setAiSuggestion(null); // Clear suggestion after applying
+    setAiSuggestion(null); 
   };
 
   const handleAddRealObject = async (objectKey: keyof typeof REAL_OBJECT_DEFINITIONS) => {
@@ -209,32 +198,27 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 
     if (definition.type === 'orbiter' && definition.orbits) {
       let centralBody: SceneObject | null = null;
-      // Prioritize specific central bodies by name if they exist
       if (definition.orbits === 'Sun') {
         centralBody = props.objects.find(obj => obj.name === 'Sun' && obj.type === 'massive') || null;
       } else if (definition.orbits === 'Earth') {
-         // Moon orbits Earth. Earth might be an orbiter itself (around Sun) or a massive central body.
          centralBody = props.objects.find(obj => obj.name === 'Earth' && (obj.type === 'orbiter' || obj.type === 'massive')) || null;
-         // If Earth not found, Moon might be added relative to Sun if Earth isn't there yet
          if (!centralBody) {
             centralBody = props.objects.find(obj => obj.name === 'Sun' && obj.type === 'massive') || null;
          }
       }
       
-      // Fallback: orbit the most massive object if specific parent not found but other massive objects exist
       if (!centralBody && props.objects.filter(o => o.type === 'massive').length > 0) {
         centralBody = props.objects
           .filter(obj => obj.type === 'massive')
           .reduce((prev, current) => (prev.mass > current.mass ? prev : current));
-      } else if (!centralBody && props.objects.length > 0) { // If no massive, orbit most massive of any type
+      } else if (!centralBody && props.objects.length > 0) { 
          centralBody = props.objects
           .reduce((prev, current) => (prev.mass > current.mass ? prev : current));
       }
 
       if (centralBody) {
         const actualCentralBodyRadius = centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS;
-        const actualOrbiterRadius = definition.radius; // Radius from definition
-        // Dynamic clearance based on central body size and orbiter size
+        const actualOrbiterRadius = definition.radius; 
         const dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 1.2, definition.radius * 2);
         const distance = actualCentralBodyRadius + actualOrbiterRadius + dynamicClearanceOffset;
         
@@ -242,7 +226,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         const centralBodyVel = centralBody.velocity || { x: 0, y: 0, z: 0 };
 
         position = {
-          x: centralBodyPos.x + distance, // Offset in X for horizontal orbit
+          x: centralBodyPos.x + distance, 
           y: centralBodyPos.y,
           z: centralBodyPos.z,
         };
@@ -251,28 +235,26 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         if (centralBody.mass > 0 && distance > 0) {
           orbitalSpeed = Math.sqrt((G_CONSTANT * centralBody.mass) / distance);
         }
-        if (!isFinite(orbitalSpeed)) orbitalSpeed = 0; // Safety check
+        if (!isFinite(orbitalSpeed)) orbitalSpeed = 0; 
         
         velocity = {
           x: centralBodyVel.x,
           y: centralBodyVel.y,
-          z: centralBodyVel.z + orbitalSpeed, // Velocity in Z for horizontal orbit
+          z: centralBodyVel.z + orbitalSpeed, 
         };
       }
     }
 
     const newObject: SceneObject = {
-      ...definition, // Spread definition first to get type, mass, radius, color etc.
+      ...definition, 
       id: newId,
-      position, // Calculated or base position
-      velocity, // Calculated or base velocity
-      // textureUrl is now part of definition, if specified (e.g. for Moon's placeholder)
-    } as SceneObject; // Cast to SceneObject as definition is Partial
+      position, 
+      velocity, 
+      textureUrl: definition.textureUrl,
+    } as SceneObject; 
 
     props.onAddObject(newObject);
     toast({ title: "Real Object Added", description: `${definition.name} added to the scene.` });
-
-    // AI Texture generation removed
   };
 
 
@@ -283,7 +265,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         <Separator className="mb-4 bg-sidebar-border" />
       </div>
       <ScrollArea className="flex-grow p-4 pt-0">
-        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4']} className="w-full">
+        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4', 'item-5']} className="w-full">
 
           <AccordionItem value="item-1" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
@@ -302,9 +284,9 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                   </CardHeader>
                   <CardContent className="px-3 py-4 pt-0">
                     <ObjectForm
-                      key={selectedObject?.id || editingObjectType || 'new-object-form'} // Key ensures form re-renders with new initialData
-                      objectType={editingObjectType || selectedObject!.type} // Pass current type
-                      initialData={formInitialData} // Pass current form data
+                      key={selectedObject?.id || editingObjectType || 'new-object-form'} 
+                      objectType={editingObjectType || selectedObject!.type} 
+                      initialData={formInitialData} 
                       onSubmit={handleObjectFormSubmit}
                       onCancel={() => { setEditingObjectType(null); props.onSelectObject(null); setFormInitialData(undefined); }}
                       submitButtonText={selectedObject ? "Update Object" : "Add Object"}
@@ -326,7 +308,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                                      : 'bg-sidebar-background text-sidebar-foreground hover:bg-opacity-75'}`}
                        onClick={() => { props.onSelectObject(obj.id); setEditingObjectType(null); }}>
                     <div className="flex items-center truncate">
-                       {/* Removed generatingTextures check */}
                        <span className="truncate" style={{color: props.selectedObjectId === obj.id ? 'hsl(var(--sidebar-accent-foreground))' : obj.color, fontWeight: props.selectedObjectId === obj.id ? 'bold' : 'normal'}}>{obj.name} ({obj.type}, M: {obj.mass.toFixed(1)})</span>
                     </div>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-sidebar-destructive-foreground hover:bg-destructive/30 flex-shrink-0" onClick={(e) => { e.stopPropagation(); props.onRemoveObject(obj.id); }}>
@@ -394,6 +375,33 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
             </AccordionContent>
           </AccordionItem>
 
+          <AccordionItem value="item-5" className="border-b-0">
+            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
+              <Paintbrush className="mr-2 h-5 w-5" /> Rendering Tools
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="show-shadows" className="text-sidebar-foreground/80">Show Shadows</Label>
+                <Switch id="show-shadows" checked={props.showShadows} onCheckedChange={props.onSetShowShadows}
+                  className="data-[state=checked]:bg-sidebar-primary data-[state=unchecked]:bg-input"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lighting-mode" className="text-sidebar-foreground/80">Lighting Mode</Label>
+                <Select value={props.lightingMode} onValueChange={(value) => props.onSetLightingMode(value as LightingMode)}>
+                  <SelectTrigger id="lighting-mode" className="w-full bg-input border-sidebar-border text-sidebar-foreground focus:ring-sidebar-ring">
+                    <SelectValue placeholder="Select lighting mode" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border-sidebar-border text-popover-foreground">
+                    <SelectItem value="Realistic Solar">Realistic Solar</SelectItem>
+                    <SelectItem value="Ambient Glow">Ambient Glow</SelectItem>
+                    <SelectItem value="Dramatic Edge">Dramatic Edge</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
           <AccordionItem value="item-4" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
               <Library className="mr-2 h-5 w-5" /> Real Objects
@@ -422,7 +430,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               <Button
                 size="sm"
                 onClick={handleAISuggest}
-                disabled={isAISuggesting || !(editingObjectType || selectedObject)} // Disable if AI is thinking or no object context
+                disabled={isAISuggesting || !(editingObjectType || selectedObject)} 
                 className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"
               >
                 {isAISuggesting ? "Thinking..." : "Suggest Parameters"}

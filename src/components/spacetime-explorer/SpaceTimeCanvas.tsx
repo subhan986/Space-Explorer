@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import type { SceneObject, ObjectType } from '@/types/spacetime';
+import type { SceneObject, ObjectType, LightingMode } from '@/types/spacetime';
 import { GRID_SIZE, GRID_DIVISIONS, INITIAL_CAMERA_POSITION, G_CONSTANT } from '@/lib/constants';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -17,6 +17,7 @@ interface SpaceTimeCanvasProps {
   trajectoryLength: number;
   onObjectsCollidedAndMerged: (absorbedObjectId: string, absorberObjectId: string, absorbedObjectMass: number) => void;
   showShadows: boolean;
+  lightingMode: LightingMode;
 }
 
 interface SimulationObjectInternal {
@@ -47,13 +48,17 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   trajectoryLength,
   onObjectsCollidedAndMerged,
   showShadows,
+  lightingMode,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
+  
+  const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
   const directionalLightRef = useRef<THREE.DirectionalLight | null>(null);
+  const pointLightRef = useRef<THREE.PointLight | null>(null); // For Dramatic Edge
 
   const objectsMapRef = useRef<Map<string, MappedObject>>(new Map());
   const trajectoriesRef = useRef<Map<string, THREE.Line>>(new Map());
@@ -325,10 +330,17 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.2); 
     scene.add(ambientLight);
+    ambientLightRef.current = ambientLight;
+
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); 
     directionalLight.position.set(50, 80, 60);
     scene.add(directionalLight);
     directionalLightRef.current = directionalLight;
+
+    const pointLight = new THREE.PointLight(0xaaaaff, 0, 500, 1); // Init with 0 intensity
+    pointLight.position.set(-100, 50, -100);
+    scene.add(pointLight);
+    pointLightRef.current = pointLight;
 
 
     const planeGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE, GRID_DIVISIONS, GRID_DIVISIONS);
@@ -424,18 +436,52 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   }, []); 
 
   useEffect(() => {
-    if (directionalLightRef.current) {
-      directionalLightRef.current.castShadow = showShadows;
+    if (!ambientLightRef.current || !directionalLightRef.current || !pointLightRef.current) return;
+
+    // Reset all lights
+    ambientLightRef.current.intensity = 0;
+    directionalLightRef.current.intensity = 0;
+    directionalLightRef.current.castShadow = false;
+    pointLightRef.current.intensity = 0;
+    pointLightRef.current.castShadow = false;
+    
+    switch (lightingMode) {
+      case "Realistic Solar":
+        ambientLightRef.current.intensity = 1.2;
+        directionalLightRef.current.intensity = 1.5;
+        directionalLightRef.current.position.set(50, 80, 60);
+        directionalLightRef.current.castShadow = showShadows;
+        break;
+      case "Ambient Glow":
+        ambientLightRef.current.intensity = 2.0;
+        directionalLightRef.current.intensity = 0.3;
+        directionalLightRef.current.position.set(50, 80, 60);
+        directionalLightRef.current.castShadow = false; // Softer, so no strong shadows
+        break;
+      case "Dramatic Edge":
+        ambientLightRef.current.intensity = 0.5;
+        directionalLightRef.current.intensity = 1.0;
+        directionalLightRef.current.position.set(50, 80, 60);
+        directionalLightRef.current.castShadow = showShadows;
+        
+        pointLightRef.current.intensity = 0.7;
+        pointLightRef.current.position.set(-100, 50, -100); // Example position for rim/fill
+        // pointLightRef.current.castShadow = false; // Point light shadows can be expensive
+        break;
     }
+    
+    // Update object shadow casting based on global showShadows and light settings
     objectsMapRef.current.forEach(mappedObj => {
         if (mappedObj.objectName === "Sun") {
             mappedObj.mainMesh.castShadow = false; 
         } else {
-            mappedObj.mainMesh.castShadow = showShadows;
+            // Only cast shadow if the main directional light is supposed to cast them in this mode
+            const dirLightCastsShadows = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
+            mappedObj.mainMesh.castShadow = showShadows && dirLightCastsShadows;
         }
     });
 
-  }, [showShadows]);
+  }, [lightingMode, showShadows]);
 
 
   useEffect(() => {
@@ -539,7 +585,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 material.map = null; 
                 material.color.set(simObj.color); 
                 if (simObj.name === "Sun") { 
-                    material.emissive.set(simObj.color);
+                    material.emissive.set(new THREE.Color(simObj.color));
                     material.emissiveIntensity = 1.5;
                 }
                 material.needsUpdate = true;
@@ -547,7 +593,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             );
             material.color.set(0xffffff); 
             if (simObj.name === "Sun") {
-                material.emissive.set(simObj.color); 
+                material.emissive.set(new THREE.Color(simObj.color)); 
                 material.emissiveIntensity = 1.0;
                 material.metalness = 0.0;
                 material.roughness = 0.8;
@@ -558,7 +604,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         } else { 
             material.color.set(simObj.color);
             if (simObj.name === "Sun") {
-                material.emissive.set(simObj.color);
+                material.emissive.set(new THREE.Color(simObj.color));
                 material.emissiveIntensity = 1.5; 
                 material.metalness = 0.0;
                 material.roughness = 0.8;
@@ -574,14 +620,15 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         threeMesh = new THREE.Mesh(geometry, material);
         threeMesh.name = objData.id; 
         
+        const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
         if (simObj.name === "Sun") {
             threeMesh.castShadow = false;
             threeMesh.receiveShadow = false;
         } else if (simObj.name === "Black Hole") {
-            threeMesh.castShadow = showShadows; 
+            threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode; 
             threeMesh.receiveShadow = false; 
         } else { 
-            threeMesh.castShadow = showShadows;
+            threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode;
             threeMesh.receiveShadow = true;
         }
 
@@ -648,7 +695,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 material.map = null;
                 material.color.set(objData.color); 
                 if (simObj.name === "Sun") {
-                    material.emissive.set(objData.color);
+                    material.emissive.set(new THREE.Color(objData.color));
                     material.emissiveIntensity = 1.5;
                 }
                 material.needsUpdate = true;
@@ -668,8 +715,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         }
         simObj.color = objData.color; 
 
+        const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
         if (simObj.name === "Sun") {
-            material.emissive.set(simObj.color); 
+            material.emissive.set(new THREE.Color(simObj.color)); 
             material.emissiveIntensity = simObj.textureUrl ? 1.0 : 1.5;
             material.metalness = 0.0;
             material.roughness = 0.8;
@@ -680,20 +728,20 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             material.roughness = 0.7;
             material.emissive?.set(0x000000); 
             material.emissiveIntensity = 0;
-            threeMesh.castShadow = showShadows;
+            threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode;
             threeMesh.receiveShadow = true;
         } else if (simObj.name === "Black Hole") {
             material.color.set(0x000000); 
             material.metalness = 0.0;
             material.roughness = 0.5;
             material.emissive?.set(0x000000);
-            threeMesh.castShadow = showShadows;
+            threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode;
             threeMesh.receiveShadow = false;
         } else { 
             material.metalness = 0.3;
             material.roughness = 0.6;
             material.emissive?.set(0x000000);
-            threeMesh.castShadow = showShadows;
+            threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode;
             threeMesh.receiveShadow = true;
         }
         if(visualReset) material.needsUpdate = true;
@@ -793,7 +841,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       updateTrajectories(); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [objects, simulationStatus, isValidVector, deformGrid, updateTrajectories, showShadows]); 
+  }, [objects, simulationStatus, isValidVector, deformGrid, updateTrajectories, showShadows, lightingMode]); 
 
   useEffect(() => {
     if (simulationStatus === 'stopped') {
@@ -844,7 +892,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                     material.map = null; 
                     material.color.set(objData.color); 
                     if (objData.name === "Sun") {
-                        material.emissive.set(objData.color);
+                        material.emissive.set(new THREE.Color(objData.color));
                         material.emissiveIntensity = 1.5;
                     }
                     material.needsUpdate = true;
@@ -860,9 +908,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
               material.map = null;
               material.color.set(objData.color);
           }
-
+            const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
             if (objData.name === "Sun") {
-                material.emissive.set(objData.color);
+                material.emissive.set(new THREE.Color(objData.color));
                 material.emissiveIntensity = objData.textureUrl ? 1.0 : 1.5;
                 material.metalness = 0.0;
                 material.roughness = 0.8;
@@ -872,20 +920,20 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 material.metalness = 0.1;
                 material.roughness = 0.7;
                 material.emissive?.set(0x000000);
-                threeMesh.castShadow = showShadows;
+                threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode;
                 threeMesh.receiveShadow = true;
             } else if (objData.name === "Black Hole") {
                 material.color.set(0x000000);
                 material.metalness = 0.0;
                 material.roughness = 0.5;
                 material.emissive?.set(0x000000);
-                threeMesh.castShadow = showShadows;
+                threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode;
                 threeMesh.receiveShadow = false;
             } else {
                 material.metalness = 0.3;
                 material.roughness = 0.6;
                 material.emissive?.set(0x000000);
-                threeMesh.castShadow = showShadows;
+                threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode;
                 threeMesh.receiveShadow = true;
             }
            material.needsUpdate = true;
@@ -937,7 +985,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       deformGrid(); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simulationStatus, objects, isValidVector, updateTrajectories, deformGrid, showShadows]);
+  }, [simulationStatus, objects, isValidVector, updateTrajectories, deformGrid, showShadows, lightingMode]);
 
 
   return (
@@ -958,5 +1006,3 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
-
-    
