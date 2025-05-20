@@ -80,8 +80,8 @@ export default function SpacetimeExplorerPage() {
     <SidebarProvider defaultOpen={true}>
       <Sidebar
         collapsible="icon"
-        className="max-w-sm border-r border-sidebar-border"
-        variant="sidebar"
+        className="max-w-sm" // Removed border-r and border-sidebar-border
+        variant="floating" // Changed from "sidebar" to "floating"
       >
         <SidebarContent className="p-0">
           <ControlPanel
@@ -105,7 +105,7 @@ export default function SpacetimeExplorerPage() {
       </Sidebar>
       <SidebarInset className="flex flex-col h-screen bg-background">
         <header className="p-2 border-b border-border flex items-center gap-2 h-[var(--sidebar-width-icon)] md:h-auto sticky top-0 bg-background z-10">
-            <SidebarTrigger> {/* Removed md:hidden to make it visible on desktop */}
+            <SidebarTrigger>
                 <PanelLeft />
             </SidebarTrigger>
             {/* Adjusted text size for better mobile display */}
@@ -119,7 +119,7 @@ export default function SpacetimeExplorerPage() {
               onObjectSelected={handleSelectObject} 
               showTrajectories={showTrajectories}
               trajectoryLength={trajectoryLength}
-              onObjectsCollidedAndMerged={handleObjectsCollidedAndMerged} // Pass the new callback
+              onObjectsCollidedAndMerged={handleObjectsCollidedAndMerged}
             />
         </main>
       </SidebarInset>
