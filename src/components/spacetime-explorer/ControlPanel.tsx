@@ -10,10 +10,11 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X, Library, Sun, Orbit, MoonIcon, SigmaSquare } from 'lucide-react'; // Added SigmaSquare for Black Hole
+import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw } from 'lucide-react';
 import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, AISuggestion, Vector3, MassiveObject } from '@/types/spacetime';
 import { suggestParameters, SuggestParametersInput } from '@/ai/flows/suggest-parameters';
+import { generateTexture } from '@/ai/flows/generate-texture-flow'; // New import
 import { useToast } from '@/hooks/use-toast';
 import {
   MIN_SIMULATION_SPEED, MAX_SIMULATION_SPEED, DEFAULT_SIMULATION_SPEED,
@@ -48,6 +49,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [isAISuggesting, setIsAISuggesting] = useState(false);
   const [formInitialData, setFormInitialData] = useState<Partial<SceneObject> | undefined>(undefined);
+  const [generatingTextures, setGeneratingTextures] = useState<Record<string, boolean>>({});
 
 
   const selectedObject = props.objects.find(obj => obj.id === props.selectedObjectId);
@@ -181,41 +183,38 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     setAiSuggestion(null);
   };
 
-  const handleAddRealObject = (objectKey: keyof typeof REAL_OBJECT_DEFINITIONS) => {
+  const handleAddRealObject = async (objectKey: keyof typeof REAL_OBJECT_DEFINITIONS) => {
     const definition = REAL_OBJECT_DEFINITIONS[objectKey];
     if (!definition) return;
 
-    const newId = `${definition.name.toLowerCase().replace(' ', '_')}_${Date.now()}`;
+    const newId = `${definition.name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
     let position: Vector3 = definition.basePosition || { x: 0, y: 0, z: 0 };
     let velocity: Vector3 = definition.baseVelocity || { x: 0, y: 0, z: 0 };
 
     if (definition.type === 'orbiter' && definition.orbits) {
       let centralBody: SceneObject | null = null;
-      // Prioritize specific parent type
       if (definition.orbits === 'Sun') {
         centralBody = props.objects.find(obj => obj.name === 'Sun' && obj.type === 'massive') || null;
       } else if (definition.orbits === 'Earth') {
-         centralBody = props.objects.find(obj => obj.name === 'Earth' && obj.type === 'orbiter') || null;
-         if (!centralBody) { // Fallback to Sun if Earth not found for Moon
+         centralBody = props.objects.find(obj => obj.name === 'Earth' && (obj.type === 'orbiter' || obj.type === 'massive')) || null;
+         if (!centralBody) {
             centralBody = props.objects.find(obj => obj.name === 'Sun' && obj.type === 'massive') || null;
          }
       }
       
-      // Fallback to most massive object if specific parent not found
       if (!centralBody && props.objects.filter(o => o.type === 'massive').length > 0) {
         centralBody = props.objects
           .filter(obj => obj.type === 'massive')
           .reduce((prev, current) => (prev.mass > current.mass ? prev : current));
-      } else if (!centralBody && props.objects.length > 0) { // Fallback to any most massive if no massive type
+      } else if (!centralBody && props.objects.length > 0) {
          centralBody = props.objects
           .reduce((prev, current) => (prev.mass > current.mass ? prev : current));
       }
 
-
       if (centralBody) {
         const actualCentralBodyRadius = centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS;
         const actualOrbiterRadius = definition.radius;
-        const dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 1.2, definition.radius * 2); // Ensure good clearance
+        const dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 1.2, definition.radius * 2);
         const distance = actualCentralBodyRadius + actualOrbiterRadius + dynamicClearanceOffset;
         
         const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
@@ -223,7 +222,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 
         position = {
           x: centralBodyPos.x + distance,
-          y: centralBodyPos.y, // Keep it planar for simplicity
+          y: centralBodyPos.y,
           z: centralBodyPos.z,
         };
 
@@ -231,27 +230,42 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         if (centralBody.mass > 0 && distance > 0) {
           orbitalSpeed = Math.sqrt((G_CONSTANT * centralBody.mass) / distance);
         }
-        if (!isFinite(orbitalSpeed)) {
-          orbitalSpeed = 0;
-        }
+        if (!isFinite(orbitalSpeed)) orbitalSpeed = 0;
         
         velocity = {
           x: centralBodyVel.x,
-          y: centralBodyVel.y, // Keep orbit primarily in XZ plane by default
+          y: centralBodyVel.y,
           z: centralBodyVel.z + orbitalSpeed,
         };
       }
     }
 
     const newObject: SceneObject = {
-      ...definition,
+      ...definition, // Spread definition first
       id: newId,
       position,
       velocity,
-    } as SceneObject; // Cast because definition is Partial<SceneObject>
+      textureUrl: definition.textureUrl, // Explicitly include textureUrl from definition if it exists (e.g., for Moon)
+    } as SceneObject;
 
     props.onAddObject(newObject);
     toast({ title: "Real Object Added", description: `${definition.name} added to the scene.` });
+
+    // Asynchronously generate texture if it's Sun or Earth
+    if (definition.name === 'Sun' || definition.name === 'Earth') {
+      setGeneratingTextures(prev => ({ ...prev, [newId]: true }));
+      toast({ title: "Generating Texture...", description: `AI is creating a texture for ${definition.name}.` });
+      try {
+        const { textureDataUri } = await generateTexture({ objectName: definition.name });
+        props.onUpdateObject({ ...newObject, textureUrl: textureDataUri });
+        toast({ title: "Texture Applied!", description: `AI texture for ${definition.name} has been applied.` });
+      } catch (error) {
+        console.error(`Failed to generate texture for ${definition.name}:`, error);
+        toast({ variant: "destructive", title: "Texture Generation Failed", description: `Could not generate texture for ${definition.name}. Using fallback color.` });
+      } finally {
+        setGeneratingTextures(prev => ({ ...prev, [newId]: false }));
+      }
+    }
   };
 
 
@@ -304,7 +318,10 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                                      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                                      : 'bg-sidebar-background text-sidebar-foreground hover:bg-opacity-75'}`}
                        onClick={() => { props.onSelectObject(obj.id); setEditingObjectType(null); }}>
-                    <span className="truncate" style={{color: props.selectedObjectId === obj.id ? 'hsl(var(--sidebar-accent-foreground))' : obj.color, fontWeight: props.selectedObjectId === obj.id ? 'bold' : 'normal'}}>{obj.name} ({obj.type}, M: {obj.mass.toFixed(1)})</span>
+                    <div className="flex items-center truncate">
+                       {generatingTextures[obj.id] && <RefreshCw className="mr-2 h-4 w-4 animate-spin" />}
+                       <span className="truncate" style={{color: props.selectedObjectId === obj.id ? 'hsl(var(--sidebar-accent-foreground))' : (generatingTextures[obj.id] ? 'hsl(var(--sidebar-muted-foreground))' : obj.color), fontWeight: props.selectedObjectId === obj.id ? 'bold' : 'normal'}}>{obj.name} ({obj.type}, M: {obj.mass.toFixed(1)})</span>
+                    </div>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-sidebar-destructive-foreground hover:bg-destructive/30 flex-shrink-0" onClick={(e) => { e.stopPropagation(); props.onRemoveObject(obj.id); }}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -385,7 +402,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                     <MoonIcon className="mr-2 h-4 w-4" /> Add Moon
                 </Button>
                 <Button size="sm" onClick={() => handleAddRealObject('BLACK_HOLE')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
-                    <SigmaSquare className="mr-2 h-4 w-4" /> Add Black Hole {/* SigmaSquare for black hole */}
+                    <SigmaSquare className="mr-2 h-4 w-4" /> Add Black Hole
                 </Button>
             </AccordionContent>
           </AccordionItem>
