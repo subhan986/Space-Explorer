@@ -3,13 +3,25 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarContent, SidebarTrigger } from '@/components/ui/sidebar';
-import SpaceTimeCanvas from '@/components/spacetime-explorer/SpaceTimeCanvas';
+// import SpaceTimeCanvas from '@/components/spacetime-explorer/SpaceTimeCanvas'; // Original import
 import ControlPanel from '@/components/spacetime-explorer/ControlPanel';
 import type { SceneObject, LightingMode } from '@/types/spacetime';
 import { DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
 import { Settings } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const SpaceTimeCanvas = dynamic(() => import('@/components/spacetime-explorer/SpaceTimeCanvas'), {
+  ssr: false, // 3D canvases often don't benefit from SSR and can cause issues
+  loading: () => (
+    <div className="w-full h-full flex items-center justify-center bg-background">
+      <Skeleton className="w-3/4 h-3/4" />
+      <p className="absolute text-foreground text-lg">Loading 3D Visualization...</p>
+    </div>
+  ),
+});
 
 export default function SpacetimeExplorerPage() {
   const [objects, setObjects] = useState<SceneObject[]>([]);
