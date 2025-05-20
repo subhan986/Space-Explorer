@@ -1,3 +1,4 @@
+
 // src/components/spacetime-explorer/SpacecraftDesigner2D.tsx
 'use client';
 
@@ -34,9 +35,9 @@ interface DesignedPart {
 }
 
 const availableParts: SpacecraftPart[] = [
-  { id: 'engine_basic', name: 'Basic Ion Engine', type: 'engine', icon: <Cog className="h-5 w-5" />, description: 'Low thrust, high efficiency.', width: 20, height: 30, color: 'hsl(var(--primary))', imageSrc: 'https://placehold.co/40x60.png?text=Eng' },
-  { id: 'hull_small', name: 'Small Hull Segment', type: 'hull', icon: <Shield className="h-5 w-5" />, description: 'Basic structural component.', width: 50, height: 50, color: 'hsl(var(--secondary))', imageSrc: 'https://placehold.co/50x50.png?text=Hull' },
-  { id: 'sensor_short', name: 'Short-Range Scanner', type: 'sensor', icon: <ScanEye className="h-5 w-5" />, description: 'Detects nearby objects.', width: 15, height: 15, color: 'hsl(var(--accent))', imageSrc: 'https://placehold.co/30x30.png?text=Sen' },
+  { id: 'engine_basic', name: 'Basic Ion Engine', type: 'engine', icon: <Cog className="h-5 w-5" />, description: 'Low thrust, high efficiency.', width: 20, height: 30, color: 'hsl(var(--primary))', imageSrc: 'https://placehold.co/40x60.png?text=Eng', },
+  { id: 'hull_small', name: 'Small Hull Segment', type: 'hull', icon: <Shield className="h-5 w-5" />, description: 'Basic structural component.', width: 50, height: 50, color: 'hsl(var(--secondary))', imageSrc: 'https://placehold.co/50x50.png?text=Hull', },
+  { id: 'sensor_short', name: 'Short-Range Scanner', type: 'sensor', icon: <ScanEye className="h-5 w-5" />, description: 'Detects nearby objects.', width: 15, height: 15, color: 'hsl(var(--accent))', imageSrc: 'https://placehold.co/30x30.png?text=Sen', },
 ];
 
 const SpacecraftDesigner2D: React.FC = () => {
@@ -91,14 +92,14 @@ const SpacecraftDesigner2D: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 h-full p-1">
+    <div className="flex flex-col md:flex-row gap-4 h-full"> {/* Removed p-1 */}
       {/* Parts Palette */}
       <Card className="w-full md:w-1/3 bg-card text-card-foreground border-sidebar-border">
         <CardHeader className="p-3">
           <CardTitle className="text-lg text-sidebar-foreground">Parts Palette</CardTitle>
         </CardHeader>
         <CardContent className="p-3">
-          <ScrollArea className="h-[200px] md:h-[calc(100%-4rem)] pr-2">
+          <ScrollArea className="h-[200px] md:h-[calc(100vh_-_200px)] pr-2"> {/* Adjusted height for better fit in sheet */}
             <div className="space-y-2">
               {availableParts.map((part) => (
                 <div key={part.id} className="p-2 border border-input rounded-md hover:bg-sidebar-accent/50">
@@ -125,10 +126,8 @@ const SpacecraftDesigner2D: React.FC = () => {
             <CardDescription className="text-sidebar-muted-foreground">Drag and arrange parts here. (Interaction not yet implemented)</CardDescription>
           </CardHeader>
           <CardContent className="p-1 h-[300px] md:h-auto md:flex-grow">
-            {/* Actual 2D Canvas would go here (e.g., HTML5 Canvas or SVG) */}
             <div 
               className="w-full h-full bg-input rounded-md border-2 border-dashed border-sidebar-border flex items-center justify-center relative overflow-hidden"
-              // onClick={(e) => { /* Logic to deselect if clicking background */ setSelectedPart(null); }}
             >
               {designedParts.map(dp => {
                 const partDef = availableParts.find(p => p.id === dp.partId);
@@ -149,7 +148,7 @@ const SpacecraftDesigner2D: React.FC = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      cursor: 'grab', // Placeholder for draggable
+                      cursor: 'grab', 
                     }}
                     className="transition-all"
                     title={partDef.name}
@@ -165,7 +164,6 @@ const SpacecraftDesigner2D: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Properties Editor & Actions - Shown if a part is selected */}
         {selectedPart && (
           <Card className="bg-card text-card-foreground border-sidebar-border">
             <CardHeader className="p-3">
@@ -187,7 +185,7 @@ const SpacecraftDesigner2D: React.FC = () => {
           </Card>
         )}
 
-        <div className="flex gap-2 mt-auto p-1">
+        <div className="flex gap-2 mt-auto"> {/* Removed p-1 */}
           <Button size="sm" variant="outline" onClick={handleClearDesign} className="border-sidebar-primary text-sidebar-primary hover:bg-sidebar-primary/10">
             <Trash2 className="mr-2 h-4 w-4" /> Clear Design
           </Button>
@@ -201,3 +199,4 @@ const SpacecraftDesigner2D: React.FC = () => {
 };
 
 export default SpacecraftDesigner2D;
+

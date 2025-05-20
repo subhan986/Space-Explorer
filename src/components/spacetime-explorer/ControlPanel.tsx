@@ -1,3 +1,4 @@
+
 // src/components/spacetime-explorer/ControlPanel.tsx
 'use client';
 
@@ -9,10 +10,11 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass } from 'lucide-react';
 import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, Vector3, MassiveObject, LightingMode } from '@/types/spacetime';
-import SpacecraftDesigner2D from './SpacecraftDesigner2D'; // Import the new component
+import SpacecraftDesigner2D from './SpacecraftDesigner2D';
 
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -89,8 +91,8 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         const actualCentralBodyRadius = centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS;
         const actualOrbiterRadius = DEFAULT_ORBITER_OBJECT_RADIUS;
         
-        let dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 0.5); // Ensure it's clear of the radius
-        dynamicClearanceOffset = Math.max(dynamicClearanceOffset, actualOrbiterRadius * 1.2); // And clear of orbiter too
+        let dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 0.5);
+        dynamicClearanceOffset = Math.max(dynamicClearanceOffset, actualOrbiterRadius * 1.2);
 
         const distance = actualCentralBodyRadius + actualOrbiterRadius + dynamicClearanceOffset;
         
@@ -100,7 +102,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         baseInitialData.position = {
           x: centralBodyPos.x + distance,
           y: centralBodyPos.y,
-          z: centralBodyPos.z, // Keep orbit horizontal by default
+          z: centralBodyPos.z,
         };
 
         let orbitalSpeed = 0;
@@ -114,7 +116,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         baseInitialData.velocity = {
           x: centralBodyVel.x,
           y: centralBodyVel.y, 
-          z: centralBodyVel.z + orbitalSpeed, // Apply velocity along Z for horizontal orbit
+          z: centralBodyVel.z + orbitalSpeed,
         };
       }
     }
@@ -176,7 +178,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
         const centralBodyVel = centralBody.velocity || { x: 0, y: 0, z: 0 };
 
-        // Default to placing along X axis, velocity along Z for horizontal orbit
         position = {
           x: centralBodyPos.x + distance, 
           y: centralBodyPos.y,
@@ -195,15 +196,14 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
           z: centralBodyVel.z + orbitalSpeed, 
         };
 
-        // Special case for ISS to orbit Earth primarily in XY plane (adjust Z pos, Y vel) if Earth exists
         if (objectKey === 'ISS' && centralBody.name === 'Earth') {
             position = {
                 x: centralBodyPos.x,
-                y: centralBodyPos.y + distance, // Place above Earth along Y
+                y: centralBodyPos.y + distance, 
                 z: centralBodyPos.z,
             };
             velocity = {
-                x: centralBodyVel.x + orbitalSpeed, // Velocity along X for orbit in XY plane
+                x: centralBodyVel.x + orbitalSpeed, 
                 y: centralBodyVel.y,
                 z: centralBodyVel.z,
             };
@@ -211,10 +211,9 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       }
     }
 
-    // For Halley's Comet, ensure base position and velocity are used if no specific orbit is defined or parent found
     if (objectKey === 'HALLEYS_COMET' && (!definition.orbits || !props.objects.find(o => o.name === definition.orbits))) {
-        position = definition.basePosition || {x:0,y:0,z:0}; // Use its defined unique starting point
-        velocity = definition.baseVelocity || {x:0,y:0,z:0}; // And its unique velocity
+        position = definition.basePosition || {x:0,y:0,z:0}; 
+        velocity = definition.baseVelocity || {x:0,y:0,z:0}; 
     }
 
 
@@ -419,7 +418,21 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               <DraftingCompass className="mr-2 h-5 w-5" /> Spacecraft Design
             </AccordionTrigger>
             <AccordionContent className="pt-2">
-              <SpacecraftDesigner2D />
+               <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full border-sidebar-primary text-sidebar-primary hover:bg-sidebar-primary/10">
+                    <Rocket className="mr-2 h-4 w-4" /> Open Spacecraft Designer
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-full sm:max-w-md md:max-w-lg lg:max-w-2xl xl:max-w-3xl p-0 overflow-y-auto">
+                  <SheetHeader className="p-4 border-b bg-card">
+                    <SheetTitle>Spacecraft Designer</SheetTitle>
+                  </SheetHeader>
+                  <div className="h-[calc(100%-var(--sheet-header-height,60px))]"> {/* Adjust height if header height changes */}
+                     <SpacecraftDesigner2D />
+                  </div>
+                </SheetContent>
+              </Sheet>
             </AccordionContent>
           </AccordionItem>
 
@@ -430,3 +443,4 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 };
 
 export default ControlPanel;
+
