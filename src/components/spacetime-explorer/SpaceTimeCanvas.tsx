@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { SceneObject, ObjectType } from '@/types/spacetime';
 import { GRID_SIZE, GRID_DIVISIONS, INITIAL_CAMERA_POSITION, G_CONSTANT } from '@/lib/constants';
-// Removed AI background flow import: import { generateBackground } from '@/ai/flows/generate-background-flow';
 
 interface SpaceTimeCanvasProps {
   objects: SceneObject[];
@@ -335,7 +334,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const planeGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE, GRID_DIVISIONS, GRID_DIVISIONS);
     const planeMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffffff, // Changed to white
+      color: 0x8A2BE2, // Violet purple (theme accent)
       wireframe: true,
       transparent: true,
       opacity: 0.3,
