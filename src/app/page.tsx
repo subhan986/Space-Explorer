@@ -5,9 +5,10 @@ import React, { useState, useCallback } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarTrigger } from '@/components/ui/sidebar';
 import SpaceTimeCanvas from '@/components/spacetime-explorer/SpaceTimeCanvas';
 import ControlPanel from '@/components/spacetime-explorer/ControlPanel';
-import type { SceneObject, MassiveObject, OrbiterObject } from '@/types/spacetime';
+import type { SceneObject } from '@/types/spacetime'; // Removed MassiveObject, OrbiterObject as SceneObject covers them
 import { DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
 import { PanelLeft } from 'lucide-react'; // Sidebar toggle icon
+import { useToast } from "@/hooks/use-toast";
 
 export default function SpacetimeExplorerPage() {
   const [objects, setObjects] = useState<SceneObject[]>([]);
@@ -16,6 +17,7 @@ export default function SpacetimeExplorerPage() {
   const [simulationSpeed, setSimulationSpeed] = useState<number>(DEFAULT_SIMULATION_SPEED);
   const [showTrajectories, setShowTrajectories] = useState<boolean>(true);
   const [trajectoryLength, setTrajectoryLength] = useState<number>(DEFAULT_TRAJECTORY_LENGTH);
+  const { toast } = useToast();
 
   const handleAddObject = useCallback((object: SceneObject) => {
     setObjects(prev => [...prev, object]);
@@ -37,13 +39,42 @@ export default function SpacetimeExplorerPage() {
   }, []);
 
   const handleResetSimulation = useCallback(() => {
-    // This could also reset objects to initial states if those are stored
-    // For now, just stops simulation and could clear dynamic data like trajectories if needed by canvas
     setSimulationStatus('stopped');
-    // Optionally, reset object positions/velocities to some initial configuration or clear them
-    // setObjects([]); // Example: Clears all objects
-    // setSelectedObjectId(null);
+    // Objects will be reset to their initial prop states by SpaceTimeCanvas logic when status is 'stopped'
   }, []);
+
+  const handleObjectsCollidedAndMerged = useCallback((absorbedObjectId: string, absorberObjectId: string, absorbedObjectMass: number) => {
+    setObjects(prevObjects => {
+      const absorberObject = prevObjects.find(obj => obj.id === absorberObjectId);
+      
+      // If absorber was already removed in a concurrent merge, do nothing for this specific event
+      if (!absorberObject) return prevObjects;
+
+      const newAbsorberMass = (absorberObject.mass || 0) + absorbedObjectMass;
+
+      // Filter out the absorbed object and update the mass of the absorber object
+      return prevObjects
+        .filter(obj => obj.id !== absorbedObjectId)
+        .map(obj => 
+          obj.id === absorberObjectId 
+            ? { ...obj, mass: newAbsorberMass } 
+            : obj
+        );
+    });
+
+    if (selectedObjectId === absorbedObjectId) {
+      setSelectedObjectId(null);
+    }
+    
+    const absorber = objects.find(o => o.id === absorberObjectId);
+    const absorbed = objects.find(o => o.id === absorbedObjectId);
+    toast({ 
+      title: "Cosmic Collision!", 
+      description: `${absorbed?.name || 'An object'} was absorbed by ${absorber?.name || 'another object'}. Mass transferred.` 
+    });
+
+  }, [selectedObjectId, toast, objects]);
+
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -85,14 +116,13 @@ export default function SpacetimeExplorerPage() {
               objects={objects}
               simulationStatus={simulationStatus}
               simulationSpeed={simulationSpeed}
-              onObjectSelected={handleSelectObject} // Optional for canvas-based selection
+              onObjectSelected={handleSelectObject} 
               showTrajectories={showTrajectories}
               trajectoryLength={trajectoryLength}
+              onObjectsCollidedAndMerged={handleObjectsCollidedAndMerged} // Pass the new callback
             />
         </main>
       </SidebarInset>
     </SidebarProvider>
   );
 }
-
-    
