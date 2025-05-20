@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { SceneObject, ObjectType } from '@/types/spacetime';
 import { GRID_SIZE, GRID_DIVISIONS, INITIAL_CAMERA_POSITION, G_CONSTANT } from '@/lib/constants';
+import { generateBackground } from '@/ai/flows/generate-background-flow'; // Import AI background flow
 
 interface SpaceTimeCanvasProps {
   objects: SceneObject[];
@@ -305,25 +306,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    const bgColor = 0x0A0A1A; // A very dark blue, good for space scenes
-    // Load background texture
-    if (textureLoaderRef.current) {
-      textureLoaderRef.current.load(
-        'https://placehold.co/4096x2048.png', // data-ai-hint="space nebula"
-        (texture) => {
-          texture.mapping = THREE.EquirectangularReflectionMapping; // Or UVMapping if it's a flat plane
-          scene.background = texture;
-        },
-        undefined,
-        (error) => {
-          console.error('Failed to load background texture:', error);
-          scene.background = new THREE.Color(bgColor); // Fallback to solid color
-        }
-      );
-    } else {
-      scene.background = new THREE.Color(bgColor); // Fallback if texture loader not ready
-    }
-    scene.fog = new THREE.Fog(bgColor, INITIAL_CAMERA_POSITION.y * 1.5, INITIAL_CAMERA_POSITION.y * 6);
+    const initialBgColor = new THREE.Color(0x0A0A1A); // A very dark blue, good for space scenes
+    scene.background = initialBgColor; // Set initial solid background
+    // scene.fog = new THREE.Fog(bgColor, INITIAL_CAMERA_POSITION.y * 1.5, INITIAL_CAMERA_POSITION.y * 6); // Fog removed
 
     const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 5000);
     cameraRef.current = camera;
@@ -369,6 +354,38 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             (gridPlaneRef.current.geometry.attributes.position as THREE.BufferAttribute).clone();
     }
 
+    const loadAiBackground = async () => {
+      if (!textureLoaderRef.current || !sceneRef.current) return;
+      try {
+        console.log("Attempting to generate AI background...");
+        const { imageDataUri } = await generateBackground({ prompt: "majestic colorful space nebula with distant galaxies" });
+        console.log("AI background data URI received (first 50 chars):", imageDataUri.substring(0,50));
+        
+        textureLoaderRef.current.load(
+          imageDataUri,
+          (texture) => {
+            console.log("AI background texture loaded successfully.");
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            if (sceneRef.current) {
+              sceneRef.current.background = texture;
+            }
+            texture.needsUpdate = true; 
+          },
+          undefined,
+          (error) => {
+            console.error('Failed to load AI-generated background texture:', error);
+            if (sceneRef.current) sceneRef.current.background = initialBgColor; // Fallback to solid color
+          }
+        );
+      } catch (error) {
+        console.error('Error calling generateBackgroundFlow:', error);
+        if (sceneRef.current) sceneRef.current.background = initialBgColor; // Fallback
+      }
+    };
+
+    loadAiBackground();
+
+
     const resizeObserver = new ResizeObserver(() => {
       if (currentMount && cameraRef.current && rendererRef.current) {
         cameraRef.current.aspect = currentMount.clientWidth / currentMount.clientHeight;
@@ -411,7 +428,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       sceneRef.current?.clear();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // showShadows dependency removed as it's handled by its own effect
+  }, []); 
 
   useEffect(() => {
     if (directionalLightRef.current) {
@@ -539,7 +556,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             const diskOuterRadius = simObj.radius * 5;   
             const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
             const diskMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xFFA500, // Orange
+                color: 0xFFA500, 
                 side: THREE.DoubleSide, 
                 transparent: true, 
                 opacity: 0.6, 
@@ -613,7 +630,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 const diskOuterRadius = simObj.radius * 5;
                 const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
                 const diskMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0xFFA500, // Orange
+                    color: 0xFFA500, 
                     side: THREE.DoubleSide, 
                     transparent: true, 
                     opacity: 0.6,
@@ -626,7 +643,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 visualReset = true;
             } else { 
                 const diskMaterial = mappedObj.accretionDiskMesh.material as THREE.MeshBasicMaterial;
-                diskMaterial.color.set(0xFFA500); // Orange
+                diskMaterial.color.set(0xFFA500); 
                 diskMaterial.opacity = 0.6;
                 diskMaterial.blending = THREE.AdditiveBlending;
                 diskMaterial.needsUpdate = true; 
@@ -764,14 +781,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 diskMesh.geometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
               }
               const diskMaterial = diskMesh.material as THREE.MeshBasicMaterial;
-              diskMaterial.color.set(0xFFA500); // Orange
+              diskMaterial.color.set(0xFFA500); 
               diskMaterial.opacity = 0.6;
               diskMaterial.blending = THREE.AdditiveBlending;
               diskMaterial.needsUpdate = true;
             } else { 
                 const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
                 const diskMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0xFFA500, // Orange
+                    color: 0xFFA500, 
                     side: THREE.DoubleSide, 
                     transparent: true, 
                     opacity: 0.6,
