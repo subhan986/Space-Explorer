@@ -305,8 +305,24 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    const bgColor = 0x222222; 
-    scene.background = new THREE.Color(bgColor);
+    const bgColor = 0x0A0A1A; // A very dark blue, good for space scenes
+    // Load background texture
+    if (textureLoaderRef.current) {
+      textureLoaderRef.current.load(
+        'https://placehold.co/4096x2048.png', // data-ai-hint="space nebula"
+        (texture) => {
+          texture.mapping = THREE.EquirectangularReflectionMapping; // Or UVMapping if it's a flat plane
+          scene.background = texture;
+        },
+        undefined,
+        (error) => {
+          console.error('Failed to load background texture:', error);
+          scene.background = new THREE.Color(bgColor); // Fallback to solid color
+        }
+      );
+    } else {
+      scene.background = new THREE.Color(bgColor); // Fallback if texture loader not ready
+    }
     scene.fog = new THREE.Fog(bgColor, INITIAL_CAMERA_POSITION.y * 1.5, INITIAL_CAMERA_POSITION.y * 6);
 
     const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 5000);
@@ -324,9 +340,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     controlsRef.current = controls;
     controls.enableDamping = true;
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2); // Increased ambient light intensity
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2); 
     scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // Increased directional light intensity
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); 
     directionalLight.position.set(50, 80, 60);
     directionalLight.castShadow = showShadows;
     scene.add(directionalLight);
@@ -374,6 +390,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current);
       if (currentMount && rendererRef.current?.domElement) currentMount.removeChild(rendererRef.current.domElement);
       rendererRef.current?.dispose();
+      (sceneRef.current?.background as THREE.Texture)?.dispose();
       objectsMapRef.current.forEach(mappedObj => {
         mappedObj.mainMesh.geometry.dispose();
         if (mappedObj.mainMesh.material instanceof THREE.Material) mappedObj.mainMesh.material.dispose();
@@ -393,7 +410,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       (gridPlaneRef.current?.material as THREE.Material)?.dispose();
       sceneRef.current?.clear();
     };
-  }, [showShadows]); // Added showShadows to dependency array for initial setup
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // showShadows dependency removed as it's handled by its own effect
 
   useEffect(() => {
     if (directionalLightRef.current) {
@@ -495,16 +513,16 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         if (simObj.textureUrl && textureLoader) {
             material.map = textureLoader.load(
               simObj.textureUrl,
-              undefined, // onLoad callback
-              undefined, // onProgress callback
-              () => { // onError callback
+              undefined, 
+              undefined, 
+              () => { 
                 console.warn(`Failed to load texture: ${simObj.textureUrl}. Falling back to color.`);
-                material.map = null; // Remove failed texture
+                material.map = null; 
                 material.color.set(simObj.color);
                 material.needsUpdate = true;
               }
             );
-            material.color.set(0xffffff); // Set base color to white for textures
+            material.color.set(0xffffff); 
         } else {
             material.color.set(simObj.color);
         }
@@ -521,7 +539,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             const diskOuterRadius = simObj.radius * 5;   
             const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
             const diskMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xFFA500, 
+                color: 0xFFA500, // Orange
                 side: THREE.DoubleSide, 
                 transparent: true, 
                 opacity: 0.6, 
@@ -533,14 +551,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             newMappedObject.accretionDiskMesh = accretionDiskMesh;
         }
         objectsMapRef.current.set(objData.id, newMappedObject);
-        mappedObj = newMappedObject; // update mappedObj reference
+        mappedObj = newMappedObject; 
         trajectoryPointsRef.current.set(objData.id, [newThreePosition.clone()]); 
       } else { 
         let corePhysicsStateReset = false; 
         let visualReset = false; 
 
         simObj.name = objData.name;
-        mappedObj.objectName = objData.name; // Keep MappedObject's name in sync
+        mappedObj.objectName = objData.name; 
         simObj.type = objData.type;
 
         if (simObj.radius !== propRadius) {
@@ -570,7 +588,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
               () => {
                 console.warn(`Failed to load texture: ${simObj.textureUrl}. Falling back to color.`);
                 material.map = null;
-                material.color.set(objData.color); // Use objData.color as simObj.color might not be up to date
+                material.color.set(objData.color); 
                 material.needsUpdate = true;
               }
             );
@@ -585,7 +603,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             material.color.set(objData.color);
             simObj.color = objData.color; 
             visualReset = true;
-        } else if (simObj.textureUrl && simObj.color !== objData.color) { // Update simObj.color even if texture is used, for trajectories
+        } else if (simObj.textureUrl && simObj.color !== objData.color) { 
             simObj.color = objData.color;
         }
         
@@ -595,7 +613,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 const diskOuterRadius = simObj.radius * 5;
                 const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
                 const diskMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0xFFA500, 
+                    color: 0xFFA500, // Orange
                     side: THREE.DoubleSide, 
                     transparent: true, 
                     opacity: 0.6,
@@ -608,7 +626,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 visualReset = true;
             } else { 
                 const diskMaterial = mappedObj.accretionDiskMesh.material as THREE.MeshBasicMaterial;
-                diskMaterial.color.set(0xFFA500);
+                diskMaterial.color.set(0xFFA500); // Orange
                 diskMaterial.opacity = 0.6;
                 diskMaterial.blending = THREE.AdditiveBlending;
                 diskMaterial.needsUpdate = true; 
@@ -680,6 +698,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       deformGrid();
       updateTrajectories(); 
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [objects, simulationStatus, isValidVector, deformGrid, updateTrajectories]); 
 
   useEffect(() => {
@@ -745,14 +764,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 diskMesh.geometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
               }
               const diskMaterial = diskMesh.material as THREE.MeshBasicMaterial;
-              diskMaterial.color.set(0xFFA500);
+              diskMaterial.color.set(0xFFA500); // Orange
               diskMaterial.opacity = 0.6;
               diskMaterial.blending = THREE.AdditiveBlending;
               diskMaterial.needsUpdate = true;
             } else { 
                 const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
                 const diskMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0xFFA500, 
+                    color: 0xFFA500, // Orange
                     side: THREE.DoubleSide, 
                     transparent: true, 
                     opacity: 0.6,
@@ -776,6 +795,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       updateTrajectories(); 
       deformGrid(); 
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simulationStatus, objects, isValidVector, updateTrajectories, deformGrid]);
 
 
