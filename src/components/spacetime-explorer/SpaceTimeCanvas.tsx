@@ -3,10 +3,10 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { SceneObject, ObjectType } from '@/types/spacetime';
 import { GRID_SIZE, GRID_DIVISIONS, INITIAL_CAMERA_POSITION, G_CONSTANT } from '@/lib/constants';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 interface SpaceTimeCanvasProps {
   objects: SceneObject[];
@@ -305,8 +305,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
-    const initialBgColor = new THREE.Color(0x0A0A1A); // A very dark blue, good for space scenes
-    scene.background = initialBgColor; // Set initial solid background
+    const initialBgColor = new THREE.Color(0x0A0A1A); 
+    scene.background = initialBgColor;
 
     const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 5000);
     cameraRef.current = camera;
@@ -327,14 +327,13 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); 
     directionalLight.position.set(50, 80, 60);
-    directionalLight.castShadow = showShadows;
     scene.add(directionalLight);
     directionalLightRef.current = directionalLight;
 
 
     const planeGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE, GRID_DIVISIONS, GRID_DIVISIONS);
     const planeMaterial = new THREE.MeshStandardMaterial({
-      color: 0x8A2BE2, // Violet purple (theme accent)
+      color: 0x8A2BE2, 
       wireframe: true,
       transparent: true,
       opacity: 0.3,
@@ -354,11 +353,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const loadStaticBackground = () => {
       if (!textureLoaderRef.current || !sceneRef.current) return;
-      console.log("Attempting to load static background image /space_background.jpg...");
       textureLoaderRef.current.load(
-        '/space_background.jpg', // Path relative to the public folder
+        '/space_background.jpg',
         (texture) => {
-          console.log("Static background texture loaded successfully.");
           texture.mapping = THREE.EquirectangularReflectionMapping;
           if (sceneRef.current) {
             sceneRef.current.background = texture;
@@ -368,11 +365,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         undefined,
         (error) => {
           console.error('Failed to load static background texture:', error);
-          if (sceneRef.current) sceneRef.current.background = initialBgColor; // Fallback to solid color
+          if (sceneRef.current) sceneRef.current.background = initialBgColor;
         }
       );
     };
-
     loadStaticBackground();
 
 
@@ -408,6 +404,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         if (mappedObj.mainMesh.material instanceof THREE.Material) mappedObj.mainMesh.material.dispose();
         else if (Array.isArray(mappedObj.mainMesh.material)) mappedObj.mainMesh.material.forEach(m => m.dispose());
         (mappedObj.mainMesh.material as THREE.MeshStandardMaterial).map?.dispose();
+        (mappedObj.mainMesh.material as THREE.MeshStandardMaterial).emissiveMap?.dispose();
+
 
         if (mappedObj.accretionDiskMesh) {
           mappedObj.accretionDiskMesh.geometry.dispose();
@@ -429,6 +427,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     if (directionalLightRef.current) {
       directionalLightRef.current.castShadow = showShadows;
     }
+    objectsMapRef.current.forEach(mappedObj => {
+        if (mappedObj.objectName === "Sun") {
+            mappedObj.mainMesh.castShadow = false; 
+        } else {
+            mappedObj.mainMesh.castShadow = showShadows;
+        }
+    });
+
   }, [showShadows]);
 
 
@@ -511,6 +517,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             mappedObj.mainMesh.geometry.dispose();
             const oldMaterial = mappedObj.mainMesh.material as THREE.MeshStandardMaterial;
             oldMaterial.map?.dispose();
+            oldMaterial.emissiveMap?.dispose();
             oldMaterial.dispose();
             if (mappedObj.accretionDiskMesh) {
                 mappedObj.mainMesh.remove(mappedObj.accretionDiskMesh); 
@@ -521,26 +528,63 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         }
 
         const geometry = new THREE.SphereGeometry(simObj.radius, 32, 32);
-        const material = new THREE.MeshStandardMaterial({ metalness:0.3, roughness:0.6 });
+        const material = new THREE.MeshStandardMaterial();
+        
         if (simObj.textureUrl && textureLoader) {
             material.map = textureLoader.load(
               simObj.textureUrl,
               undefined, 
               undefined, 
               () => { 
-                console.warn(`Failed to load texture: ${simObj.textureUrl}. Falling back to color.`);
                 material.map = null; 
-                material.color.set(simObj.color);
+                material.color.set(simObj.color); 
+                if (simObj.name === "Sun") { 
+                    material.emissive.set(simObj.color);
+                    material.emissiveIntensity = 1.5;
+                }
                 material.needsUpdate = true;
               }
             );
             material.color.set(0xffffff); 
-        } else {
+            if (simObj.name === "Sun") {
+                material.emissive.set(simObj.color); 
+                material.emissiveIntensity = 1.0;
+                material.metalness = 0.0;
+                material.roughness = 0.8;
+            } else if (simObj.name === "Earth" || simObj.name === "Moon") {
+                material.metalness = 0.1;
+                material.roughness = 0.7;
+            }
+        } else { 
             material.color.set(simObj.color);
+            if (simObj.name === "Sun") {
+                material.emissive.set(simObj.color);
+                material.emissiveIntensity = 1.5; 
+                material.metalness = 0.0;
+                material.roughness = 0.8;
+            } else if (simObj.name === "Black Hole") {
+                material.metalness = 0.0;
+                material.roughness = 0.5;
+            } else { 
+                material.metalness = 0.3;
+                material.roughness = 0.6;
+            }
         }
+
         threeMesh = new THREE.Mesh(geometry, material);
         threeMesh.name = objData.id; 
-        threeMesh.castShadow = true;
+        
+        if (simObj.name === "Sun") {
+            threeMesh.castShadow = false;
+            threeMesh.receiveShadow = false;
+        } else if (simObj.name === "Black Hole") {
+            threeMesh.castShadow = showShadows; 
+            threeMesh.receiveShadow = false; 
+        } else { 
+            threeMesh.castShadow = showShadows;
+            threeMesh.receiveShadow = true;
+        }
+
         scene.add(threeMesh);
         threeMesh.position.copy(newThreePosition); 
         
@@ -551,7 +595,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             const diskOuterRadius = simObj.radius * 5;   
             const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
             const diskMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xFFA500, // Orange for accretion disk
+                color: 0xFFA500, 
                 side: THREE.DoubleSide, 
                 transparent: true, 
                 opacity: 0.6, 
@@ -559,6 +603,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             });
             const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
             accretionDiskMesh.rotation.x = Math.PI / 2; 
+            accretionDiskMesh.castShadow = false;
+            accretionDiskMesh.receiveShadow = false;
             threeMesh.add(accretionDiskMesh); 
             newMappedObject.accretionDiskMesh = accretionDiskMesh;
         }
@@ -589,35 +635,68 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
         const material = threeMesh.material as THREE.MeshStandardMaterial;
         const oldTextureUrl = simObj.textureUrl;
-        simObj.textureUrl = objData.textureUrl;
+        simObj.textureUrl = objData.textureUrl; 
 
-        if (simObj.textureUrl && simObj.textureUrl !== oldTextureUrl && textureLoader) {
+        if (simObj.textureUrl && (simObj.textureUrl !== oldTextureUrl || !material.map) && textureLoader) {
             material.map?.dispose(); 
+            material.emissiveMap?.dispose();
             material.map = textureLoader.load(
               simObj.textureUrl,
               undefined,
               undefined,
               () => {
-                console.warn(`Failed to load texture: ${simObj.textureUrl}. Falling back to color.`);
                 material.map = null;
                 material.color.set(objData.color); 
+                if (simObj.name === "Sun") {
+                    material.emissive.set(objData.color);
+                    material.emissiveIntensity = 1.5;
+                }
                 material.needsUpdate = true;
               }
             );
-            material.color.set(0xffffff);
+            material.color.set(0xffffff); 
             visualReset = true;
         } else if (!simObj.textureUrl && oldTextureUrl) { 
             material.map?.dispose();
+            material.emissiveMap?.dispose();
             material.map = null;
             material.color.set(objData.color); 
             visualReset = true;
-        } else if (!simObj.textureUrl && simObj.color !== objData.color) { 
-            material.color.set(objData.color);
-            simObj.color = objData.color; 
-            visualReset = true;
-        } else if (simObj.textureUrl && simObj.color !== objData.color) { 
-            simObj.color = objData.color;
+        } else if (simObj.color !== objData.color && !simObj.textureUrl) { 
+             material.color.set(objData.color);
+             visualReset = true; 
         }
+        simObj.color = objData.color; 
+
+        if (simObj.name === "Sun") {
+            material.emissive.set(simObj.color); 
+            material.emissiveIntensity = simObj.textureUrl ? 1.0 : 1.5;
+            material.metalness = 0.0;
+            material.roughness = 0.8;
+            threeMesh.castShadow = false;
+            threeMesh.receiveShadow = false;
+        } else if (simObj.name === "Earth" || simObj.name === "Moon") {
+            material.metalness = 0.1;
+            material.roughness = 0.7;
+            material.emissive?.set(0x000000); 
+            material.emissiveIntensity = 0;
+            threeMesh.castShadow = showShadows;
+            threeMesh.receiveShadow = true;
+        } else if (simObj.name === "Black Hole") {
+            material.color.set(0x000000); 
+            material.metalness = 0.0;
+            material.roughness = 0.5;
+            material.emissive?.set(0x000000);
+            threeMesh.castShadow = showShadows;
+            threeMesh.receiveShadow = false;
+        } else { 
+            material.metalness = 0.3;
+            material.roughness = 0.6;
+            material.emissive?.set(0x000000);
+            threeMesh.castShadow = showShadows;
+            threeMesh.receiveShadow = true;
+        }
+        if(visualReset) material.needsUpdate = true;
         
         if (mappedObj.objectName === 'Black Hole') {
             if (!mappedObj.accretionDiskMesh) { 
@@ -633,6 +712,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 });
                 const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
                 accretionDiskMesh.rotation.x = Math.PI / 2;
+                accretionDiskMesh.castShadow = false;
+                accretionDiskMesh.receiveShadow = false;
                 threeMesh.add(accretionDiskMesh);
                 mappedObj.accretionDiskMesh = accretionDiskMesh;
                 visualReset = true;
@@ -684,6 +765,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           mappedObjToRemove.mainMesh.geometry.dispose();
           const oldMaterial = mappedObjToRemove.mainMesh.material as THREE.MeshStandardMaterial;
           oldMaterial.map?.dispose(); 
+          oldMaterial.emissiveMap?.dispose();
           oldMaterial.dispose();
 
           if (mappedObjToRemove.accretionDiskMesh) { 
@@ -711,7 +793,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       updateTrajectories(); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [objects, simulationStatus, isValidVector, deformGrid, updateTrajectories]); 
+  }, [objects, simulationStatus, isValidVector, deformGrid, updateTrajectories, showShadows]); 
 
   useEffect(() => {
     if (simulationStatus === 'stopped') {
@@ -749,22 +831,65 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             threeMesh.geometry = new THREE.SphereGeometry(propRadius, 32, 32);
           }
           const material = threeMesh.material as THREE.MeshStandardMaterial;
+          
           if (objData.textureUrl && textureLoaderRef.current) {
               if(material.map?.image?.src !== objData.textureUrl || !material.map) { 
                 material.map?.dispose();
+                material.emissiveMap?.dispose();
                 material.map = textureLoaderRef.current.load(
                   objData.textureUrl,
                   undefined,
                   undefined,
-                  () => { material.map = null; material.color.set(objData.color); material.needsUpdate = true;}
+                  () => { 
+                    material.map = null; 
+                    material.color.set(objData.color); 
+                    if (objData.name === "Sun") {
+                        material.emissive.set(objData.color);
+                        material.emissiveIntensity = 1.5;
+                    }
+                    material.needsUpdate = true;
+                  }
                 );
               }
               material.color.set(0xffffff);
           } else {
-              if(material.map) material.map.dispose(); 
+              if(material.map) {
+                material.map.dispose();
+                material.emissiveMap?.dispose();
+              }
               material.map = null;
               material.color.set(objData.color);
           }
+
+            if (objData.name === "Sun") {
+                material.emissive.set(objData.color);
+                material.emissiveIntensity = objData.textureUrl ? 1.0 : 1.5;
+                material.metalness = 0.0;
+                material.roughness = 0.8;
+                threeMesh.castShadow = false;
+                threeMesh.receiveShadow = false;
+            } else if (objData.name === "Earth" || objData.name === "Moon") {
+                material.metalness = 0.1;
+                material.roughness = 0.7;
+                material.emissive?.set(0x000000);
+                threeMesh.castShadow = showShadows;
+                threeMesh.receiveShadow = true;
+            } else if (objData.name === "Black Hole") {
+                material.color.set(0x000000);
+                material.metalness = 0.0;
+                material.roughness = 0.5;
+                material.emissive?.set(0x000000);
+                threeMesh.castShadow = showShadows;
+                threeMesh.receiveShadow = false;
+            } else {
+                material.metalness = 0.3;
+                material.roughness = 0.6;
+                material.emissive?.set(0x000000);
+                threeMesh.castShadow = showShadows;
+                threeMesh.receiveShadow = true;
+            }
+           material.needsUpdate = true;
+
           if (mappedObj.objectName === 'Black Hole') {
             const diskInnerRadius = propRadius * 1.5;
             const diskOuterRadius = propRadius * 5;
@@ -779,6 +904,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
               diskMaterial.color.set(0xFFA500); 
               diskMaterial.opacity = 0.6;
               diskMaterial.blending = THREE.AdditiveBlending;
+              diskMaterial.castShadow = false;
+              diskMaterial.receiveShadow = false;
               diskMaterial.needsUpdate = true;
             } else { 
                 const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
@@ -791,6 +918,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 });
                 const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
                 accretionDiskMesh.rotation.x = Math.PI / 2;
+                accretionDiskMesh.castShadow = false;
+                accretionDiskMesh.receiveShadow = false;
                 threeMesh.add(accretionDiskMesh);
                 mappedObj.accretionDiskMesh = accretionDiskMesh;
             }
@@ -808,7 +937,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       deformGrid(); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simulationStatus, objects, isValidVector, updateTrajectories, deformGrid]);
+  }, [simulationStatus, objects, isValidVector, updateTrajectories, deformGrid, showShadows]);
 
 
   return (
