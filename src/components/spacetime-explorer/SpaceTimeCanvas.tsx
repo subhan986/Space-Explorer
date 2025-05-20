@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { SceneObject, ObjectType } from '@/types/spacetime';
 import { GRID_SIZE, GRID_DIVISIONS, INITIAL_CAMERA_POSITION, G_CONSTANT } from '@/lib/constants';
-import { generateBackground } from '@/ai/flows/generate-background-flow'; // Import AI background flow
+// Removed AI background flow import: import { generateBackground } from '@/ai/flows/generate-background-flow';
 
 interface SpaceTimeCanvasProps {
   objects: SceneObject[];
@@ -308,7 +308,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     sceneRef.current = scene;
     const initialBgColor = new THREE.Color(0x0A0A1A); // A very dark blue, good for space scenes
     scene.background = initialBgColor; // Set initial solid background
-    // scene.fog = new THREE.Fog(bgColor, INITIAL_CAMERA_POSITION.y * 1.5, INITIAL_CAMERA_POSITION.y * 6); // Fog removed
 
     const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 5000);
     cameraRef.current = camera;
@@ -354,36 +353,28 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             (gridPlaneRef.current.geometry.attributes.position as THREE.BufferAttribute).clone();
     }
 
-    const loadAiBackground = async () => {
+    const loadStaticBackground = () => {
       if (!textureLoaderRef.current || !sceneRef.current) return;
-      try {
-        console.log("Attempting to generate AI background...");
-        const { imageDataUri } = await generateBackground({ prompt: "majestic colorful space nebula with distant galaxies" });
-        console.log("AI background data URI received (first 50 chars):", imageDataUri.substring(0,50));
-        
-        textureLoaderRef.current.load(
-          imageDataUri,
-          (texture) => {
-            console.log("AI background texture loaded successfully.");
-            texture.mapping = THREE.EquirectangularReflectionMapping;
-            if (sceneRef.current) {
-              sceneRef.current.background = texture;
-            }
-            texture.needsUpdate = true; 
-          },
-          undefined,
-          (error) => {
-            console.error('Failed to load AI-generated background texture:', error);
-            if (sceneRef.current) sceneRef.current.background = initialBgColor; // Fallback to solid color
+      console.log("Attempting to load static background image /space_background.jpg...");
+      textureLoaderRef.current.load(
+        '/space_background.jpg', // Path relative to the public folder
+        (texture) => {
+          console.log("Static background texture loaded successfully.");
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+          if (sceneRef.current) {
+            sceneRef.current.background = texture;
           }
-        );
-      } catch (error) {
-        console.error('Error calling generateBackgroundFlow:', error);
-        if (sceneRef.current) sceneRef.current.background = initialBgColor; // Fallback
-      }
+          texture.needsUpdate = true;
+        },
+        undefined,
+        (error) => {
+          console.error('Failed to load static background texture:', error);
+          if (sceneRef.current) sceneRef.current.background = initialBgColor; // Fallback to solid color
+        }
+      );
     };
 
-    loadAiBackground();
+    loadStaticBackground();
 
 
     const resizeObserver = new ResizeObserver(() => {
@@ -407,7 +398,12 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current);
       if (currentMount && rendererRef.current?.domElement) currentMount.removeChild(rendererRef.current.domElement);
       rendererRef.current?.dispose();
-      (sceneRef.current?.background as THREE.Texture)?.dispose();
+      
+      const bgTexture = sceneRef.current?.background as THREE.Texture;
+      if (bgTexture && bgTexture.isTexture) {
+        bgTexture.dispose();
+      }
+
       objectsMapRef.current.forEach(mappedObj => {
         mappedObj.mainMesh.geometry.dispose();
         if (mappedObj.mainMesh.material instanceof THREE.Material) mappedObj.mainMesh.material.dispose();
@@ -556,7 +552,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             const diskOuterRadius = simObj.radius * 5;   
             const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
             const diskMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xFFA500, 
+                color: 0xFFA500, // Orange for accretion disk
                 side: THREE.DoubleSide, 
                 transparent: true, 
                 opacity: 0.6, 
@@ -834,3 +830,5 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
+
+    
