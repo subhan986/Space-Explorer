@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap } from 'lucide-react';
+import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture } from 'lucide-react';
 import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, AISuggestion, Vector3, MassiveObject, LightingMode } from '@/types/spacetime';
 import { suggestParameters, SuggestParametersInput } from '@/ai/flows/suggest-parameters';
@@ -21,7 +21,7 @@ import {
   G_CONSTANT, DEFAULT_ORBITAL_DISTANCE_OFFSET, DEFAULT_MASSIVE_OBJECT_RADIUS,
   DEFAULT_MASSIVE_OBJECT_COLOR, DEFAULT_ORBITER_OBJECT_COLOR
 } from '@/lib/constants';
-import { REAL_OBJECT_DEFINITIONS } from '@/lib/real-objects';
+import { REAL_OBJECT_DEFINITIONS, type RealObjectDefinition } from '@/lib/real-objects';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -188,7 +188,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     setAiSuggestion(null); 
   };
 
-  const handleAddRealObject = async (objectKey: keyof typeof REAL_OBJECT_DEFINITIONS) => {
+  const handleAddRealObject = (objectKey: keyof typeof REAL_OBJECT_DEFINITIONS) => {
     const definition = REAL_OBJECT_DEFINITIONS[objectKey];
     if (!definition) return;
 
@@ -196,25 +196,29 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     let position: Vector3 = definition.basePosition || { x: 0, y: 0, z: 0 };
     let velocity: Vector3 = definition.baseVelocity || { x: 0, y: 0, z: 0 };
 
-    if (definition.type === 'orbiter' && definition.orbits) {
+    if (definition.orbits) {
       let centralBody: SceneObject | null = null;
+      
+      // Prioritize specific named parent
       if (definition.orbits === 'Sun') {
         centralBody = props.objects.find(obj => obj.name === 'Sun' && obj.type === 'massive') || null;
       } else if (definition.orbits === 'Earth') {
-         centralBody = props.objects.find(obj => obj.name === 'Earth' && (obj.type === 'orbiter' || obj.type === 'massive')) || null;
-         if (!centralBody) {
-            centralBody = props.objects.find(obj => obj.name === 'Sun' && obj.type === 'massive') || null;
+         centralBody = props.objects.find(obj => obj.name === 'Earth') || null;
+      }
+
+      // Fallback to most massive object if specific parent not found or not specified as Sun/Earth
+      if (!centralBody && props.objects.filter(o => o.type === 'massive' || o.mass > (definition.mass * 10)).length > 0) {
+        centralBody = props.objects
+          .filter(obj => obj.type === 'massive' || obj.mass > (definition.mass * 10)) // only orbit things significantly more massive
+          .reduce((prev, current) => (prev.mass > current.mass ? prev : current), props.objects[0]); // Add initial value for reduce
+      } else if (!centralBody && props.objects.length > 0) {
+         // Fallback to any object if no massive ones, ensuring it's not self-orbiting indirectly
+         const potentialParents = props.objects.filter(obj => obj.id !== newId && obj.mass > definition.mass);
+         if(potentialParents.length > 0) {
+           centralBody = potentialParents.reduce((prev, current) => (prev.mass > current.mass ? prev : current));
          }
       }
-      
-      if (!centralBody && props.objects.filter(o => o.type === 'massive').length > 0) {
-        centralBody = props.objects
-          .filter(obj => obj.type === 'massive')
-          .reduce((prev, current) => (prev.mass > current.mass ? prev : current));
-      } else if (!centralBody && props.objects.length > 0) { 
-         centralBody = props.objects
-          .reduce((prev, current) => (prev.mass > current.mass ? prev : current));
-      }
+
 
       if (centralBody) {
         const actualCentralBodyRadius = centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS;
@@ -225,6 +229,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
         const centralBodyVel = centralBody.velocity || { x: 0, y: 0, z: 0 };
 
+        // Place orbiter along X-axis from central body
         position = {
           x: centralBodyPos.x + distance, 
           y: centralBodyPos.y,
@@ -237,6 +242,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         }
         if (!isFinite(orbitalSpeed)) orbitalSpeed = 0; 
         
+        // Give tangential velocity along Z-axis for horizontal orbit
         velocity = {
           x: centralBodyVel.x,
           y: centralBodyVel.y,
@@ -245,13 +251,26 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       }
     }
 
+    // For Halley's Comet, ensure its basePosition & baseVelocity from definition are used if no orbit target.
+    if (objectKey === 'HALLEYS_COMET' && !definition.orbits) {
+        position = definition.basePosition || { x:0,y:0,z:0};
+        velocity = definition.baseVelocity || { x:0,y:0,z:0};
+    }
+
+
     const newObject: SceneObject = {
+      // Spreading definition must come first to allow overriding with calculated/dynamic values
       ...definition, 
       id: newId,
-      position, 
-      velocity, 
+      name: definition.name,
+      type: definition.type,
+      mass: definition.mass,
+      radius: definition.radius,
+      color: definition.color,
       textureUrl: definition.textureUrl,
-    } as SceneObject; 
+      position, // Calculated or default from definition
+      velocity, // Calculated or default from definition
+    };
 
     props.onAddObject(newObject);
     toast({ title: "Real Object Added", description: `${definition.name} added to the scene.` });
@@ -416,8 +435,23 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                 <Button size="sm" onClick={() => handleAddRealObject('MOON')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
                     <MoonIcon className="mr-2 h-4 w-4" /> Add Moon
                 </Button>
+                 <Button size="sm" onClick={() => handleAddRealObject('JUPITER')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
+                    <Circle className="mr-2 h-4 w-4" /> Add Jupiter
+                </Button>
+                <Button size="sm" onClick={() => handleAddRealObject('ISS')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
+                    <Rocket className="mr-2 h-4 w-4" /> Add ISS
+                </Button>
+                <Button size="sm" onClick={() => handleAddRealObject('HALLEYS_COMET')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
+                    <Sparkles className="mr-2 h-4 w-4" /> Add Halley's Comet
+                </Button>
+                <Button size="sm" onClick={() => handleAddRealObject('CERES')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
+                    <Circle className="mr-2 h-4 w-4" /> Add Ceres
+                </Button>
                 <Button size="sm" onClick={() => handleAddRealObject('BLACK_HOLE')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
                     <SigmaSquare className="mr-2 h-4 w-4" /> Add Black Hole
+                </Button>
+                <Button size="sm" onClick={() => handleAddRealObject('SAGITTARIUS_A_STAR')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground">
+                    <Aperture className="mr-2 h-4 w-4" /> Add Sagittarius A*
                 </Button>
             </AccordionContent>
           </AccordionItem>
