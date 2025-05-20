@@ -272,7 +272,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     sceneRef.current = scene;
     const bgColor = 0x222222;
     scene.background = new THREE.Color(bgColor); 
-    scene.fog = new THREE.Fog(bgColor, 300, 1500);
+    scene.fog = new THREE.Fog(bgColor, 1000, 3000); // Adjusted fog: starts at 1000, full at 3000
 
     const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 5000);
     cameraRef.current = camera;
@@ -623,4 +623,3 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
 export default SpaceTimeCanvas;
 
-    

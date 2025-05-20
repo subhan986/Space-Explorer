@@ -6,7 +6,7 @@ export const DEFAULT_ORBITER_OBJECT_RADIUS = 2;
 export const DEFAULT_MASSIVE_OBJECT_COLOR = '#FFD700'; // Gold
 export const DEFAULT_ORBITER_OBJECT_COLOR = '#00BFFF'; // DeepSkyBlue
 
-export const INITIAL_CAMERA_POSITION: Vector3 = { x: 0, y: 50, z: 150 };
+export const INITIAL_CAMERA_POSITION: Vector3 = { x: 0, y: 200, z: 500 }; // Adjusted: further back and higher
 export const GRID_SIZE = 2000; // Increased from 200
 export const GRID_DIVISIONS = 50; // Increased from 20
 
