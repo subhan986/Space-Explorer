@@ -335,7 +335,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const planeGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE, GRID_DIVISIONS, GRID_DIVISIONS);
     const planeMaterial = new THREE.MeshStandardMaterial({
-      color: 0x8A2BE2, 
+      color: 0xffffff, // Changed to white
       wireframe: true,
       transparent: true,
       opacity: 0.3,
