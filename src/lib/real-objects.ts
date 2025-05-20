@@ -9,7 +9,6 @@ export interface RealObjectDefinition extends Omit<Partial<SceneObject>, 'id' | 
   mass: number; // Scaled mass for simulation
   radius: number; // Visual radius for simulation
   color: string; // Fallback color if texture fails or for trajectories
-  // textureUrl removed
   basePosition?: Vector3; // Optional base position if not orbiting
   baseVelocity?: Vector3; // Optional base velocity
   orbits?: 'Sun' | 'Earth'; // Hints for orbital placement
@@ -23,7 +22,6 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     mass: 100000,
     radius: 30,
     color: '#FFD700', // Yellow
-    // textureUrl: 'https://placehold.co/2048x1024.png', // data-ai-hint="sun surface"
     basePosition: { x: 0, y: 0, z: 0 },
     baseVelocity: { x: 0, y: 0, z: 0 },
     realMassKg: '1.989 × 10³⁰ kg',
@@ -34,7 +32,6 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     mass: 300,
     radius: 8,
     color: '#4169E1', // Blue
-    // textureUrl: 'https://placehold.co/2048x1024.png', // data-ai-hint="earth map"
     orbits: 'Sun',
     realMassKg: '5.972 × 10²⁴ kg',
   },
@@ -44,7 +41,6 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     mass: 3,
     radius: 2.5,
     color: '#FFFFFF', // White
-    // textureUrl: 'https://placehold.co/1024x512.png', // data-ai-hint="moon surface"
     orbits: 'Earth',
     realMassKg: '7.342 × 10²² kg',
   },
@@ -61,10 +57,9 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
   JUPITER: {
     name: 'Jupiter',
     type: 'orbiter',
-    mass: 9500, // Increased mass relative to Earth for simulation effect
+    mass: 9500, 
     radius: 25,
     color: '#D2B48C', // Tan/Orange-ish
-    // textureUrl: 'https://placehold.co/2048x1024.png', // data-ai-hint="jupiter texture gas giant"
     orbits: 'Sun',
     realMassKg: '1.898 × 10²⁷ kg',
   },
@@ -90,10 +85,9 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
   CERES: {
     name: 'Ceres',
     type: 'orbiter',
-    mass: 50, // Increased mass relative to moon
+    mass: 50, 
     radius: 4,
     color: '#808080', // Gray
-    // textureUrl: 'https://placehold.co/1024x512.png', // data-ai-hint="ceres texture rock asteroid"
     orbits: 'Sun',
     realMassKg: '9.39 × 10²⁰ kg',
   },
@@ -108,3 +102,4 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     realMassKg: '~8.6 × 10³⁶ kg (4.3 million solar masses)',
   },
 };
+

@@ -29,7 +29,6 @@ interface SimulationObjectInternal {
   radius: number;
   color: string;
   name: string;
-  // textureUrl removed from here as it's no longer used for rendering
   netForceMagnitude?: number;
 }
 
@@ -67,7 +66,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   const simulationObjectsRef = useRef<Map<string, SimulationObjectInternal>>(new Map());
   const gridPlaneRef = useRef<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null>(null);
   const animationFrameIdRef = useRef<number>();
-  // TextureLoader still needed for background
   const textureLoaderRef = useRef<THREE.TextureLoader | null>(null);
 
 
@@ -418,11 +416,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         if (mappedObj.mainMesh.material instanceof THREE.Material) mappedObj.mainMesh.material.dispose();
         else if (Array.isArray(mappedObj.mainMesh.material)) mappedObj.mainMesh.material.forEach(m => m.dispose());
         
-        // No object textures to dispose from material.map
-        // (mappedObj.mainMesh.material as THREE.MeshStandardMaterial).map?.dispose();
-        // (mappedObj.mainMesh.material as THREE.MeshStandardMaterial).emissiveMap?.dispose();
-
-
         if (mappedObj.accretionDiskMesh) {
           mappedObj.accretionDiskMesh.geometry.dispose();
           if (mappedObj.accretionDiskMesh.material instanceof THREE.Material) mappedObj.accretionDiskMesh.material.dispose();
@@ -472,7 +465,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     }
     
     objectsMapRef.current.forEach(mappedObj => {
-        if (mappedObj.objectName === "Sun") {
+        const simObj = simulationObjectsRef.current.get(mappedObj.mainMesh.name); // Use mesh name as ID
+        if (simObj && (simObj.name === "Sun")) { // Check by name
             mappedObj.mainMesh.castShadow = false; 
         } else {
             const dirLightCastsShadows = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
@@ -561,7 +555,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             scene.remove(mappedObj.mainMesh);
             mappedObj.mainMesh.geometry.dispose();
             const oldMaterial = mappedObj.mainMesh.material as THREE.MeshStandardMaterial;
-            oldMaterial.dispose(); // No maps to dispose
+            oldMaterial.dispose();
+            oldMaterial.map?.dispose(); // Dispose old texture map if any
+            oldMaterial.emissiveMap?.dispose(); // Dispose old emissive map if any
             if (mappedObj.accretionDiskMesh) {
                 mappedObj.mainMesh.remove(mappedObj.accretionDiskMesh); 
                 mappedObj.accretionDiskMesh.geometry.dispose();
@@ -571,9 +567,13 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         }
 
         const geometry = new THREE.SphereGeometry(simObj.radius, 32, 32);
-        const material = new THREE.MeshStandardMaterial({color: simObj.color});
+        // Create material using color only
+        const material = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(simObj.color), // Use simObj.color
+            map: null, // Explicitly null
+            emissiveMap: null, // Explicitly null
+        });
         
-        // Apply specific material properties based on name
         if (simObj.name === "Sun") {
             material.emissive.set(new THREE.Color(simObj.color));
             material.emissiveIntensity = 1.5; 
@@ -583,10 +583,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             material.metalness = 0.1;
             material.roughness = 0.7;
         } else if (simObj.name === "Black Hole" || simObj.name === "Sagittarius A*") {
+            material.color.set(0x000000); // Ensure black hole is black
             material.metalness = 0.0;
             material.roughness = 0.5;
-            // color is already black from simObj.color
-        } else { // Other objects like ISS, Halley's Comet
+        } else { 
             material.metalness = 0.3;
             material.roughness = 0.6;
         }
@@ -655,14 +655,15 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         }
 
         const material = threeMesh.material as THREE.MeshStandardMaterial;
+        material.map = null; // Ensure no texture
+        material.emissiveMap = null; // Ensure no emissive map
         
-        if (simObj.color !== objData.color) { 
-             material.color.set(objData.color);
+        if (simObj.color !== objData.color || material.color.getHexString() !== new THREE.Color(objData.color).getHexString()) { 
+             material.color.set(new THREE.Color(objData.color));
              visualReset = true; 
         }
         simObj.color = objData.color; 
 
-        // Apply material properties based on object name/type
         const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
         if (simObj.name === "Sun") {
             material.emissive.set(new THREE.Color(simObj.color)); 
@@ -693,11 +694,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             threeMesh.receiveShadow = true;
         }
         
-        // No texture maps to manage
-        material.map = null;
-        material.emissiveMap = null;
-
-        if(visualReset || material.color.getHexString() !== new THREE.Color(objData.color).getHexString().substring(1) ) { // check if color actually changed
+        if(visualReset || material.color.getHexString() !== new THREE.Color(objData.color).getHexString().substring(1) ) { 
             material.needsUpdate = true;
         }
         
@@ -765,7 +762,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           scene.remove(mappedObjToRemove.mainMesh); 
           mappedObjToRemove.mainMesh.geometry.dispose();
           const oldMaterial = mappedObjToRemove.mainMesh.material as THREE.MeshStandardMaterial;
-          oldMaterial.dispose(); // No maps to dispose
+          oldMaterial.dispose();
+          oldMaterial.map?.dispose(); 
+          oldMaterial.emissiveMap?.dispose();
 
           if (mappedObjToRemove.accretionDiskMesh) { 
             mappedObjToRemove.mainMesh.remove(mappedObjToRemove.accretionDiskMesh); 
@@ -831,9 +830,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           }
           const material = threeMesh.material as THREE.MeshStandardMaterial;
           
-          material.color.set(objData.color);
-          material.map = null; // Ensure no texture
-          material.emissiveMap = null; // Ensure no emissive map
+          material.color.set(new THREE.Color(objData.color));
+          material.map = null; 
+          material.emissiveMap = null;
             
             const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
             if (objData.name === "Sun") {
@@ -933,3 +932,4 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
+
