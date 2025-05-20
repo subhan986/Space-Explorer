@@ -17,8 +17,6 @@ interface SpacecraftPart {
   type: 'engine' | 'hull' | 'sensor' | 'weapon'; // Add more types as needed
   icon: React.ReactNode; // Icon for the palette
   description: string;
-  // Potentially add properties like mass, thrust, powerConsumption, etc.
-  // For 2D representation:
   width: number; // in design units
   height: number; // in design units
   imageSrc?: string; // path to an image for the part
@@ -35,51 +33,52 @@ interface DesignedPart {
 }
 
 const availableParts: SpacecraftPart[] = [
-  { id: 'engine_basic', name: 'Basic Ion Engine', type: 'engine', icon: <Cog className="h-5 w-5" />, description: 'Low thrust, high efficiency.', width: 20, height: 30, color: 'hsl(var(--primary))', imageSrc: 'https://placehold.co/40x60.png?text=Eng', },
-  { id: 'hull_small', name: 'Small Hull Segment', type: 'hull', icon: <Shield className="h-5 w-5" />, description: 'Basic structural component.', width: 50, height: 50, color: 'hsl(var(--secondary))', imageSrc: 'https://placehold.co/50x50.png?text=Hull', },
-  { id: 'sensor_short', name: 'Short-Range Scanner', type: 'sensor', icon: <ScanEye className="h-5 w-5" />, description: 'Detects nearby objects.', width: 15, height: 15, color: 'hsl(var(--accent))', imageSrc: 'https://placehold.co/30x30.png?text=Sen', },
+  { id: 'engine_basic', name: 'Basic Ion Engine', type: 'engine', icon: <Cog className="h-5 w-5" />, description: 'Low thrust, high efficiency.', width: 40, height: 60, color: 'hsl(var(--primary))', imageSrc: 'https://placehold.co/40x60.png?text=Eng' },
+  { id: 'hull_small', name: 'Small Hull Segment', type: 'hull', icon: <Shield className="h-5 w-5" />, description: 'Basic structural component.', width: 50, height: 50, color: 'hsl(var(--secondary))', imageSrc: 'https://placehold.co/50x50.png?text=Hull' },
+  { id: 'sensor_short', name: 'Short-Range Scanner', type: 'sensor', icon: <ScanEye className="h-5 w-5" />, description: 'Detects nearby objects.', width: 30, height: 30, color: 'hsl(var(--accent))', imageSrc: 'https://placehold.co/30x30.png?text=Sen' },
 ];
 
 const SpacecraftDesigner2D: React.FC = () => {
   const [designedParts, setDesignedParts] = useState<DesignedPart[]>([]);
-  const [selectedPart, setSelectedPart] = useState<DesignedPart | null>(null);
+  const [selectedPartInstanceId, setSelectedPartInstanceId] = useState<string | null>(null);
 
-  // Placeholder functions - actual implementation is complex
   const handleAddPartToCanvas = (part: SpacecraftPart) => {
     const newDesignedPart: DesignedPart = {
-      instanceId: `inst_${part.id}_${Date.now()}`,
+      instanceId: `inst_${part.id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       partId: part.id,
       x: 50, // Default spawn position
       y: 50,
       rotation: 0,
     };
-    setDesignedParts([...designedParts, newDesignedPart]);
-    // In a real implementation: drag-and-drop logic would set initial x,y
+    setDesignedParts(prev => [...prev, newDesignedPart]);
   };
 
   const handleSelectPartOnCanvas = (instanceId: string) => {
-    const part = designedParts.find(p => p.instanceId === instanceId);
-    setSelectedPart(part || null);
-    // In a real implementation: clicking on the canvas representation
+    setSelectedPartInstanceId(instanceId);
   };
   
-  const handleUpdateSelectedPart = (updates: Partial<DesignedPart>) => {
-    if (selectedPart) {
-      setDesignedParts(prev => prev.map(p => p.instanceId === selectedPart.instanceId ? {...p, ...updates} : p));
-      setSelectedPart(prev => prev ? {...prev, ...updates} : null);
+  const selectedPart = designedParts.find(p => p.instanceId === selectedPartInstanceId);
+
+  const handleUpdateSelectedPart = (updates: Partial<Omit<DesignedPart, 'instanceId' | 'partId'>>) => {
+    if (selectedPartInstanceId) {
+      setDesignedParts(prev => 
+        prev.map(p => 
+          p.instanceId === selectedPartInstanceId ? { ...p, ...updates } : p
+        )
+      );
     }
   };
 
   const handleRemoveSelectedPart = () => {
-    if (selectedPart) {
-      setDesignedParts(prev => prev.filter(p => p.instanceId !== selectedPart.instanceId));
-      setSelectedPart(null);
+    if (selectedPartInstanceId) {
+      setDesignedParts(prev => prev.filter(p => p.instanceId !== selectedPartInstanceId));
+      setSelectedPartInstanceId(null);
     }
   };
 
   const handleClearDesign = () => {
     setDesignedParts([]);
-    setSelectedPart(null);
+    setSelectedPartInstanceId(null);
   };
 
   const handleBuildSpacecraft = () => {
@@ -92,14 +91,14 @@ const SpacecraftDesigner2D: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 h-full"> {/* Removed p-1 */}
+    <div className="flex flex-col md:flex-row gap-4 h-full">
       {/* Parts Palette */}
       <Card className="w-full md:w-1/3 bg-card text-card-foreground border-sidebar-border">
         <CardHeader className="p-3">
           <CardTitle className="text-lg text-sidebar-foreground">Parts Palette</CardTitle>
         </CardHeader>
         <CardContent className="p-3">
-          <ScrollArea className="h-[200px] md:h-[calc(100vh_-_200px)] pr-2"> {/* Adjusted height for better fit in sheet */}
+          <ScrollArea className="h-[200px] md:h-[calc(100vh_-_200px)] pr-2">
             <div className="space-y-2">
               {availableParts.map((part) => (
                 <div key={part.id} className="p-2 border border-input rounded-md hover:bg-sidebar-accent/50">
@@ -123,7 +122,7 @@ const SpacecraftDesigner2D: React.FC = () => {
         <Card className="flex-1 bg-card text-card-foreground border-sidebar-border relative">
           <CardHeader className="p-3">
             <CardTitle className="text-lg text-sidebar-foreground">Design Canvas</CardTitle>
-            <CardDescription className="text-sidebar-muted-foreground">Drag and arrange parts here. (Interaction not yet implemented)</CardDescription>
+            <CardDescription className="text-sidebar-muted-foreground">Click parts to select. Edit below.</CardDescription>
           </CardHeader>
           <CardContent className="p-1 h-[300px] md:h-auto md:flex-grow">
             <div 
@@ -144,13 +143,13 @@ const SpacecraftDesigner2D: React.FC = () => {
                       height: `${partDef.height}px`,
                       transform: `rotate(${dp.rotation}deg)`,
                       backgroundColor: partDef.color,
-                      border: dp.instanceId === selectedPart?.instanceId ? '2px solid hsl(var(--ring))' : '1px solid hsl(var(--border))',
+                      border: dp.instanceId === selectedPartInstanceId ? '2px solid hsl(var(--ring))' : '1px solid hsl(var(--border))',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      cursor: 'grab', 
+                      cursor: 'pointer', 
                     }}
-                    className="transition-all"
+                    className="transition-all hover:ring-2 hover:ring-ring"
                     title={partDef.name}
                   >
                     {partDef.imageSrc ? 
@@ -159,7 +158,7 @@ const SpacecraftDesigner2D: React.FC = () => {
                   </div>
                 );
               })}
-               {designedParts.length === 0 && <p className="text-sidebar-muted-foreground text-center p-4">Add parts from the palette.</p>}
+               {designedParts.length === 0 && <p className="text-sidebar-muted-foreground text-center p-4">Add parts from the palette to begin.</p>}
             </div>
           </CardContent>
         </Card>
@@ -169,14 +168,20 @@ const SpacecraftDesigner2D: React.FC = () => {
             <CardHeader className="p-3">
               <CardTitle className="text-md text-sidebar-foreground">Edit: {availableParts.find(p=>p.id === selectedPart.partId)?.name}</CardTitle>
             </CardHeader>
-            <CardContent className="p-3 space-y-2">
-              <div>
-                <label htmlFor="partX" className="text-xs text-sidebar-muted-foreground">X: </label>
-                <input type="number" id="partX" value={selectedPart.x} onChange={e => handleUpdateSelectedPart({x: parseInt(e.target.value) || 0})} className="bg-input border border-sidebar-border rounded p-1 w-16 text-sidebar-foreground" />
-                <label htmlFor="partY" className="text-xs text-sidebar-muted-foreground ml-2">Y: </label>
-                <input type="number" id="partY" value={selectedPart.y} onChange={e => handleUpdateSelectedPart({y: parseInt(e.target.value) || 0})} className="bg-input border border-sidebar-border rounded p-1 w-16 text-sidebar-foreground" />
-                <label htmlFor="partRot" className="text-xs text-sidebar-muted-foreground ml-2">Rot: </label>
-                <input type="number" id="partRot" value={selectedPart.rotation} onChange={e => handleUpdateSelectedPart({rotation: parseInt(e.target.value) || 0})} className="bg-input border border-sidebar-border rounded p-1 w-16 text-sidebar-foreground" />
+            <CardContent className="p-3 space-y-3">
+              <div className="grid grid-cols-3 gap-2 items-center">
+                <div>
+                  <label htmlFor="partX" className="text-xs text-sidebar-muted-foreground block mb-1">X Pos:</label>
+                  <input type="number" id="partX" value={selectedPart.x} onChange={e => handleUpdateSelectedPart({x: parseInt(e.target.value) || 0})} className="bg-input border border-sidebar-border rounded p-1 w-full text-sidebar-foreground text-sm" />
+                </div>
+                <div>
+                  <label htmlFor="partY" className="text-xs text-sidebar-muted-foreground block mb-1">Y Pos:</label>
+                  <input type="number" id="partY" value={selectedPart.y} onChange={e => handleUpdateSelectedPart({y: parseInt(e.target.value) || 0})} className="bg-input border border-sidebar-border rounded p-1 w-full text-sidebar-foreground text-sm" />
+                </div>
+                <div>
+                  <label htmlFor="partRot" className="text-xs text-sidebar-muted-foreground block mb-1">Rotation (&deg;):</label>
+                  <input type="number" id="partRot" value={selectedPart.rotation} onChange={e => handleUpdateSelectedPart({rotation: parseInt(e.target.value) || 0})} className="bg-input border border-sidebar-border rounded p-1 w-full text-sidebar-foreground text-sm" />
+                </div>
               </div>
               <Button size="sm" variant="destructive" onClick={handleRemoveSelectedPart} className="w-full">
                 <Trash2 className="mr-2 h-4 w-4"/> Remove Selected Part
@@ -185,7 +190,7 @@ const SpacecraftDesigner2D: React.FC = () => {
           </Card>
         )}
 
-        <div className="flex gap-2 mt-auto"> {/* Removed p-1 */}
+        <div className="flex gap-2 mt-auto">
           <Button size="sm" variant="outline" onClick={handleClearDesign} className="border-sidebar-primary text-sidebar-primary hover:bg-sidebar-primary/10">
             <Trash2 className="mr-2 h-4 w-4" /> Clear Design
           </Button>
@@ -200,3 +205,4 @@ const SpacecraftDesigner2D: React.FC = () => {
 
 export default SpacecraftDesigner2D;
 
+    
