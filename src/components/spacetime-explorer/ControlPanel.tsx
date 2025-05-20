@@ -14,7 +14,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass } from 'lucide-react';
 import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, Vector3, MassiveObject, LightingMode } from '@/types/spacetime';
-import SpacecraftDesigner2D from './SpacecraftDesigner2D';
+// Removed: import SpacecraftDesigner2D from './SpacecraftDesigner2D';
 
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -241,7 +241,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         <Separator className="mb-4 bg-sidebar-border" />
       </div>
       <ScrollArea className="flex-grow p-4 pt-0">
-        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-4', 'item-5', 'item-6']} className="w-full">
+        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-4', 'item-5']} className="w-full">
 
           <AccordionItem value="item-1" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
@@ -413,6 +413,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
             </AccordionContent>
           </AccordionItem>
           
+          {/* Removed Spacecraft Design Accordion Item
           <AccordionItem value="item-6" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
               <DraftingCompass className="mr-2 h-5 w-5" /> Spacecraft Design
@@ -428,13 +429,15 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                   <SheetHeader className="p-4 border-b bg-card">
                     <SheetTitle>Spacecraft Designer</SheetTitle>
                   </SheetHeader>
-                  <div className="h-[calc(100%-var(--sheet-header-height,60px))]"> {/* Adjust height if header height changes */}
-                     <SpacecraftDesigner2D />
+                  <div className="h-[calc(100%-var(--sheet-header-height,60px))]"> 
+                     {/* <SpacecraftDesigner2D /> Removed import and usage }
+                     <p className="p-4 text-center text-sidebar-muted-foreground">Spacecraft Designer is being developed.</p>
                   </div>
                 </SheetContent>
               </Sheet>
             </AccordionContent>
           </AccordionItem>
+          */}
 
         </Accordion>
       </ScrollArea>
