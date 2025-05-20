@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture } from 'lucide-react';
+import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Lightbulb, Check, X, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass } from 'lucide-react';
 import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, AISuggestion, Vector3, MassiveObject, LightingMode } from '@/types/spacetime';
 import { suggestParameters, SuggestParametersInput } from '@/ai/flows/suggest-parameters';
@@ -199,20 +199,17 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     if (definition.orbits) {
       let centralBody: SceneObject | null = null;
       
-      // Prioritize specific named parent
       if (definition.orbits === 'Sun') {
         centralBody = props.objects.find(obj => obj.name === 'Sun' && obj.type === 'massive') || null;
       } else if (definition.orbits === 'Earth') {
          centralBody = props.objects.find(obj => obj.name === 'Earth') || null;
       }
 
-      // Fallback to most massive object if specific parent not found or not specified as Sun/Earth
       if (!centralBody && props.objects.filter(o => o.type === 'massive' || o.mass > (definition.mass * 10)).length > 0) {
         centralBody = props.objects
-          .filter(obj => obj.type === 'massive' || obj.mass > (definition.mass * 10)) // only orbit things significantly more massive
-          .reduce((prev, current) => (prev.mass > current.mass ? prev : current), props.objects[0]); // Add initial value for reduce
+          .filter(obj => obj.type === 'massive' || obj.mass > (definition.mass * 10)) 
+          .reduce((prev, current) => (prev.mass > current.mass ? prev : current), props.objects[0]); 
       } else if (!centralBody && props.objects.length > 0) {
-         // Fallback to any object if no massive ones, ensuring it's not self-orbiting indirectly
          const potentialParents = props.objects.filter(obj => obj.id !== newId && obj.mass > definition.mass);
          if(potentialParents.length > 0) {
            centralBody = potentialParents.reduce((prev, current) => (prev.mass > current.mass ? prev : current));
@@ -229,7 +226,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
         const centralBodyVel = centralBody.velocity || { x: 0, y: 0, z: 0 };
 
-        // Place orbiter along X-axis from central body
         position = {
           x: centralBodyPos.x + distance, 
           y: centralBodyPos.y,
@@ -242,7 +238,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         }
         if (!isFinite(orbitalSpeed)) orbitalSpeed = 0; 
         
-        // Give tangential velocity along Z-axis for horizontal orbit
         velocity = {
           x: centralBodyVel.x,
           y: centralBodyVel.y,
@@ -251,7 +246,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       }
     }
 
-    // For Halley's Comet, ensure its basePosition & baseVelocity from definition are used if no orbit target.
     if (objectKey === 'HALLEYS_COMET' && !definition.orbits) {
         position = definition.basePosition || { x:0,y:0,z:0};
         velocity = definition.baseVelocity || { x:0,y:0,z:0};
@@ -259,7 +253,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 
 
     const newObject: SceneObject = {
-      // Spreading definition must come first to allow overriding with calculated/dynamic values
       ...definition, 
       id: newId,
       name: definition.name,
@@ -267,9 +260,8 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       mass: definition.mass,
       radius: definition.radius,
       color: definition.color,
-      textureUrl: definition.textureUrl,
-      position, // Calculated or default from definition
-      velocity, // Calculated or default from definition
+      position, 
+      velocity, 
     };
 
     props.onAddObject(newObject);
@@ -284,7 +276,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         <Separator className="mb-4 bg-sidebar-border" />
       </div>
       <ScrollArea className="flex-grow p-4 pt-0">
-        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4', 'item-5']} className="w-full">
+        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3', 'item-4', 'item-5', 'item-6', 'item-7']} className="w-full">
 
           <AccordionItem value="item-1" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
@@ -455,6 +447,30 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                 </Button>
             </AccordionContent>
           </AccordionItem>
+          
+          <AccordionItem value="item-6" className="border-b-0">
+            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
+              <DraftingCompass className="mr-2 h-5 w-5" /> Spacecraft Design
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 space-y-4">
+              <p className="text-sm text-sidebar-muted-foreground">
+                Spacecraft building and modification tools will be available here in a future update.
+                Design your custom ships, choose components, and prepare for launch!
+              </p>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="item-7" className="border-b-0">
+            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
+              <Target className="mr-2 h-5 w-5" /> Mission Control
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 space-y-4">
+              <p className="text-sm text-sidebar-muted-foreground">
+                Plan and execute space missions from this panel. Launch probes, deploy satellites, 
+                and set objectives for your cosmic adventures. Coming soon!
+              </p>
+            </AccordionContent>
+          </AccordionItem>
 
           <AccordionItem value="item-3" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
@@ -505,3 +521,5 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 };
 
 export default ControlPanel;
+
+    
