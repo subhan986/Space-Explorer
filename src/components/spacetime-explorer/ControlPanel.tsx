@@ -13,9 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass } from 'lucide-react';
 import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, Vector3, MassiveObject, LightingMode } from '@/types/spacetime';
-// AI Suggestion related imports removed as the section is being removed
-// import { suggestParameters, SuggestParametersInput } from '@/ai/flows/suggest-parameters';
-// import type { AISuggestion } from '@/types/spacetime';
+
 import { useToast } from '@/hooks/use-toast';
 import {
   MIN_SIMULATION_SPEED, MAX_SIMULATION_SPEED, DEFAULT_SIMULATION_SPEED,
@@ -53,9 +51,6 @@ interface ControlPanelProps {
 const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   const { toast } = useToast();
   const [editingObjectType, setEditingObjectType] = useState<ObjectType | null>(null);
-  // AI Suggestion related state removed
-  // const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
-  // const [isAISuggesting, setIsAISuggesting] = useState(false);
   const [formInitialData, setFormInitialData] = useState<Partial<SceneObject> | undefined>(undefined);
 
 
@@ -121,7 +116,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       }
     }
     setFormInitialData(baseInitialData); 
-    // setAiSuggestion(null); // AI Suggestion related state removed
   };
 
   const handleObjectFormSubmit = (data: Partial<SceneObject>) => {
@@ -138,9 +132,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     setFormInitialData(undefined); 
   };
 
-  // AI Suggestion related functions removed
-  // const handleAISuggest = async () => { ... };
-  // const applyAISuggestion = () => { ... };
 
  const handleAddRealObject = (objectKey: keyof typeof REAL_OBJECT_DEFINITIONS) => {
     const definition = REAL_OBJECT_DEFINITIONS[objectKey];
@@ -408,8 +399,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
             </AccordionTrigger>
             <AccordionContent className="pt-2 space-y-4">
               <p className="text-sm text-sidebar-muted-foreground">
-                Spacecraft building and modification tools will be available here in a future update.
-                Design your custom ships, choose components, and prepare for launch!
+                This section is planned for a future 3D spacecraft workshop. Here, you'll be able to design, assemble, and customize your own vessels using various components and tools, preparing them for launch into the main spacetime simulation.
               </p>
             </AccordionContent>
           </AccordionItem>
