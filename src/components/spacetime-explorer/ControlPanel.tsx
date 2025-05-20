@@ -88,7 +88,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       if (centralBody) {
         const actualCentralBodyRadius = centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS;
         const actualOrbiterRadius = DEFAULT_ORBITER_OBJECT_RADIUS;
-        const dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 1.0);
+        const dynamicClearanceOffset = Math.max(DEFAULT_ORBITAL_DISTANCE_OFFSET, actualCentralBodyRadius * 1.2, actualOrbiterRadius * 1.5);
         const distance = actualCentralBodyRadius + actualOrbiterRadius + dynamicClearanceOffset;
         
         const centralBodyPos = centralBody.position || { x: 0, y: 0, z: 0 };
@@ -221,7 +221,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         <Separator className="mb-4 bg-sidebar-border" />
       </div>
       <ScrollArea className="flex-grow p-4 pt-0">
-        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-4', 'item-5', 'item-6', 'item-7']} className="w-full">
+        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-4', 'item-5', 'item-6']} className="w-full">
 
           <AccordionItem value="item-1" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
@@ -399,20 +399,12 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
             </AccordionTrigger>
             <AccordionContent className="pt-2 space-y-4">
               <p className="text-sm text-sidebar-muted-foreground">
-                This section is planned for a future 3D spacecraft workshop. Here, you'll be able to design, assemble, and customize your own vessels using various components and tools, preparing them for launch into the main spacetime simulation.
+                This section is for the future 2D spacecraft designer. Here, you'll be able to use a 2D interface to select components (engines, hulls, sensors, etc.) and drag-and-drop them to assemble your custom spacecraft. Once designed, you'll be able to 'build' it and launch it into the 3D simulation.
               </p>
-            </AccordionContent>
-          </AccordionItem>
-
-          <AccordionItem value="item-7" className="border-b-0">
-            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
-              <Target className="mr-2 h-5 w-5" /> Mission Control
-            </AccordionTrigger>
-            <AccordionContent className="pt-2 space-y-4">
-              <p className="text-sm text-sidebar-muted-foreground">
-                Plan and execute space missions from this panel. Launch probes, deploy satellites, 
-                and set objectives for your cosmic adventures. Coming soon!
-              </p>
+               {/* Placeholder for where the 2D designer canvas/tools would go */}
+              <div className="w-full h-64 bg-input rounded-md flex items-center justify-center border border-sidebar-border">
+                <p className="text-sidebar-muted-foreground text-center p-4">2D Spacecraft Design Canvas (Coming Soon)</p>
+              </div>
             </AccordionContent>
           </AccordionItem>
 
