@@ -2,12 +2,12 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { SidebarProvider, Sidebar, SidebarInset, SidebarHeader, SidebarContent, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar, SidebarInset, SidebarContent, SidebarTrigger } from '@/components/ui/sidebar';
 import SpaceTimeCanvas from '@/components/spacetime-explorer/SpaceTimeCanvas';
 import ControlPanel from '@/components/spacetime-explorer/ControlPanel';
-import type { SceneObject } from '@/types/spacetime'; // Removed MassiveObject, OrbiterObject as SceneObject covers them
+import type { SceneObject } from '@/types/spacetime';
 import { DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
-import { PanelLeft } from 'lucide-react'; // Sidebar toggle icon
+import { PanelLeft } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 export default function SpacetimeExplorerPage() {
@@ -105,7 +105,7 @@ export default function SpacetimeExplorerPage() {
       </Sidebar>
       <SidebarInset className="flex flex-col h-screen bg-background">
         <header className="p-2 border-b border-border flex items-center gap-2 h-[var(--sidebar-width-icon)] md:h-auto sticky top-0 bg-background z-10">
-            <SidebarTrigger className="md:hidden"> {/* Only show trigger on mobile if sidebar is collapsible off-canvas */}
+            <SidebarTrigger> {/* Removed md:hidden to make it visible on desktop */}
                 <PanelLeft />
             </SidebarTrigger>
             {/* Adjusted text size for better mobile display */}
