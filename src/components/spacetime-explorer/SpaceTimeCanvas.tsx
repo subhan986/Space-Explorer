@@ -311,8 +311,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     const initialBgColor = new THREE.Color(0x0A0A1A); 
-    scene.background = initialBgColor;
-    scene.fog = new THREE.Fog(0x050510, 7000, 25000); // Dark fog, starts at 7000, full at 25000
+    // scene.background = initialBgColor; // Background is loaded below
+    scene.fog = new THREE.Fog(0x050510, 7000, 25000); // Dark fog
 
     const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 50000); // Far plane increased
     cameraRef.current = camera;
@@ -568,7 +568,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
         const geometry = new THREE.SphereGeometry(simObj.radius, 32, 32);
         const material = new THREE.MeshStandardMaterial({
-            color: new THREE.Color(simObj.color),
+             color: new THREE.Color(simObj.color),
         });
         
         if (simObj.name === "Sun") {
@@ -923,5 +923,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
+
 
 
