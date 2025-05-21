@@ -312,6 +312,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     sceneRef.current = scene;
     const initialBgColor = new THREE.Color(0x0A0A1A); 
     scene.background = initialBgColor;
+    scene.fog = new THREE.Fog(0x050510, 700, 2000); // Dark fog, starts at 700, full at 2000
 
     const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 5000);
     cameraRef.current = camera;
@@ -556,8 +557,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             mappedObj.mainMesh.geometry.dispose();
             const oldMaterial = mappedObj.mainMesh.material as THREE.MeshStandardMaterial;
             oldMaterial.dispose();
-            oldMaterial.map?.dispose(); // Dispose old texture map if any
-            oldMaterial.emissiveMap?.dispose(); // Dispose old emissive map if any
+            oldMaterial.map?.dispose(); 
+            oldMaterial.emissiveMap?.dispose(); 
             if (mappedObj.accretionDiskMesh) {
                 mappedObj.mainMesh.remove(mappedObj.accretionDiskMesh); 
                 mappedObj.accretionDiskMesh.geometry.dispose();
@@ -567,23 +568,22 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         }
 
         const geometry = new THREE.SphereGeometry(simObj.radius, 32, 32);
-        // Create material using color only
         const material = new THREE.MeshStandardMaterial({
-            color: new THREE.Color(simObj.color), // Use simObj.color
-            map: null, // Explicitly null
-            emissiveMap: null, // Explicitly null
+            color: new THREE.Color(simObj.color),
+            map: null,
+            emissiveMap: null,
         });
         
         if (simObj.name === "Sun") {
             material.emissive.set(new THREE.Color(simObj.color));
-            material.emissiveIntensity = 1.5; 
+            material.emissiveIntensity = 1.0; 
             material.metalness = 0.0;
             material.roughness = 0.8;
         } else if (simObj.name === "Earth" || simObj.name === "Moon" || simObj.name === "Jupiter" || simObj.name === "Ceres") {
             material.metalness = 0.1;
             material.roughness = 0.7;
         } else if (simObj.name === "Black Hole" || simObj.name === "Sagittarius A*") {
-            material.color.set(0x000000); // Ensure black hole is black
+            material.color.set(0x000000); 
             material.metalness = 0.0;
             material.roughness = 0.5;
         } else { 
@@ -655,10 +655,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         }
 
         const material = threeMesh.material as THREE.MeshStandardMaterial;
-        material.map = null; // Ensure no texture
-        material.emissiveMap = null; // Ensure no emissive map
+        material.map = null; 
+        material.emissiveMap = null;
         
-        if (simObj.color !== objData.color || material.color.getHexString() !== new THREE.Color(objData.color).getHexString()) { 
+        if (simObj.color !== objData.color || material.color.getHexString() !== new THREE.Color(objData.color).getHexString().substring(1)) { 
              material.color.set(new THREE.Color(objData.color));
              visualReset = true; 
         }
@@ -667,7 +667,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
         if (simObj.name === "Sun") {
             material.emissive.set(new THREE.Color(simObj.color)); 
-            material.emissiveIntensity = 1.5;
+            material.emissiveIntensity = 1.0;
             material.metalness = 0.0;
             material.roughness = 0.8;
             threeMesh.castShadow = false;
@@ -837,7 +837,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
             if (objData.name === "Sun") {
                 material.emissive.set(new THREE.Color(objData.color));
-                material.emissiveIntensity = 1.5;
+                material.emissiveIntensity = 1.0;
                 material.metalness = 0.0;
                 material.roughness = 0.8;
                 threeMesh.castShadow = false;
