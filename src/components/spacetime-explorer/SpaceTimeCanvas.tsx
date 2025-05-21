@@ -264,7 +264,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     if (!originalPositions) return;
 
     const vertex = new THREE.Vector3();
-    const maxDisplacement = 60; // Max visual depth of the well
+    const maxDisplacement = 100; // Max visual depth of the well
 
     if (objectsWithMassForGrid.length === 0) {
       for (let i = 0; i < positions.count; i++) {
@@ -287,9 +287,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           const distanceOnPlaneSq = dx * dx + dz * dz;
           const safeDistanceOnPlaneSq = Math.max(distanceOnPlaneSq, 0.0001);
 
-          const wellStrength = mo.mass * 0.03; 
-          // Refined falloffFactor for more localized, curved wells
-          const falloffFactor = Math.max(Math.pow(mo.radius * 4, 2), 200);
+          const wellStrength = mo.mass * 0.05; 
+          const falloffFactor = Math.max(Math.pow(mo.radius * 5, 2), 200);
 
 
           const displacement = -wellStrength * Math.exp(-safeDistanceOnPlaneSq / falloffFactor);
@@ -862,7 +861,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             }
            material.needsUpdate = true;
 
-          if (mappedObj.objectName === 'Black Hole' || mappedObj.objectName === 'Sagittarius A*') {
+          if ((mappedObj.objectName === 'Black Hole' || mappedObj.objectName === 'Sagittarius A*') && mappedObj.accretionDiskMesh) {
             const diskInnerRadius = propRadius * 1.5;
             const diskOuterRadius = propRadius * 5;
             if (mappedObj.accretionDiskMesh) {
