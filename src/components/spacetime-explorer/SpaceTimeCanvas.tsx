@@ -264,7 +264,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     if (!originalPositions) return;
 
     const vertex = new THREE.Vector3();
-    const maxDisplacement = 100; // Max visual depth of the well
+    const maxDisplacement = 200; // Max visual depth of the well
 
     if (objectsWithMassForGrid.length === 0) {
       for (let i = 0; i < positions.count; i++) {
@@ -287,8 +287,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           const distanceOnPlaneSq = dx * dx + dz * dz;
           const safeDistanceOnPlaneSq = Math.max(distanceOnPlaneSq, 0.0001);
 
-          const wellStrength = mo.mass * 0.05; 
-          const falloffFactor = Math.max(Math.pow(mo.radius * 5, 2), 200);
+          const wellStrength = mo.mass * 0.1; 
+          const falloffFactor = Math.max(Math.pow(mo.radius * 7, 2), 200);
 
 
           const displacement = -wellStrength * Math.exp(-safeDistanceOnPlaneSq / falloffFactor);
@@ -501,7 +501,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
             objectsMapRef.current.forEach((mappedObj, objectId) => {
               const simObj = simulationObjectsRef.current.get(objectId);
-              if (simObj && (simObj.name === 'Black Hole' || simObj.name === 'Sagittarius A*') && mappedObj.accretionDiskMesh) {
+              if (simObj && (mappedObj.objectName === 'Black Hole' || mappedObj.objectName === 'Sagittarius A*') && mappedObj.accretionDiskMesh) {
                 mappedObj.accretionDiskMesh.rotation.y += 0.002 * simulationSpeed; 
               }
             });
@@ -615,10 +615,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             const diskOuterRadius = simObj.radius * 5;   
             const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
             const diskMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xFFE066, // Brighter orange-yellow
+                color: 0xFFE066, 
                 side: THREE.DoubleSide, 
                 transparent: true, 
-                opacity: 0.7, // Slightly increased opacity
+                opacity: 0.7, 
                 blending: THREE.AdditiveBlending 
             });
             const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
@@ -703,10 +703,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 const diskOuterRadius = simObj.radius * 5;
                 const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
                 const diskMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0xFFE066,  // Brighter orange-yellow
+                    color: 0xFFE066, 
                     side: THREE.DoubleSide, 
                     transparent: true, 
-                    opacity: 0.7, // Slightly increased opacity
+                    opacity: 0.7, 
                     blending: THREE.AdditiveBlending
                 });
                 const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
@@ -717,8 +717,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 mappedObj.accretionDiskMesh = accretionDiskMesh;
             } else { 
                 const diskMaterial = mappedObj.accretionDiskMesh.material as THREE.MeshBasicMaterial;
-                diskMaterial.color.set(0xFFE066); // Brighter orange-yellow
-                diskMaterial.opacity = 0.7; // Slightly increased opacity
+                diskMaterial.color.set(0xFFE066); 
+                diskMaterial.opacity = 0.7; 
                 diskMaterial.blending = THREE.AdditiveBlending;
                 diskMaterial.needsUpdate = true; 
             }
@@ -872,8 +872,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 diskMesh.geometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
               }
               const diskMaterial = diskMesh.material as THREE.MeshBasicMaterial;
-              diskMaterial.color.set(0xFFE066); // Brighter orange-yellow
-              diskMaterial.opacity = 0.7; // Slightly increased opacity
+              diskMaterial.color.set(0xFFE066); 
+              diskMaterial.opacity = 0.7; 
               diskMaterial.blending = THREE.AdditiveBlending;
               diskMaterial.castShadow = false;
               diskMaterial.receiveShadow = false;
@@ -881,10 +881,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             } else { 
                 const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
                 const diskMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0xFFE066, // Brighter orange-yellow
+                    color: 0xFFE066, 
                     side: THREE.DoubleSide, 
                     transparent: true, 
-                    opacity: 0.7, // Slightly increased opacity
+                    opacity: 0.7, 
                     blending: THREE.AdditiveBlending 
                 });
                 const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
