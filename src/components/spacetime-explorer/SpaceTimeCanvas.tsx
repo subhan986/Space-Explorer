@@ -264,7 +264,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     if (!originalPositions) return;
 
     const vertex = new THREE.Vector3();
-    const maxDisplacement = 60;
+    const maxDisplacement = 60; // Max visual depth of the well
 
     if (objectsWithMassForGrid.length === 0) {
       for (let i = 0; i < positions.count; i++) {
@@ -288,7 +288,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           const safeDistanceOnPlaneSq = Math.max(distanceOnPlaneSq, 0.0001);
 
           const wellStrength = mo.mass * 0.03; 
-          const falloffFactor = Math.max(mo.mass * 0.5 + mo.radius * 2, 25); 
+          // Refined falloffFactor for more localized, curved wells
+          const falloffFactor = Math.max(Math.pow(mo.radius * 4, 2), 200);
+
 
           const displacement = -wellStrength * Math.exp(-safeDistanceOnPlaneSq / falloffFactor);
           if (isFinite(displacement)) {
@@ -311,10 +313,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     const initialBgColor = new THREE.Color(0x0A0A1A); 
-    // scene.background = initialBgColor; // Background is loaded below
-    scene.fog = new THREE.Fog(0x050510, 7000, 25000); // Dark fog
+    scene.fog = new THREE.Fog(0x050510, 7000, 25000); 
 
-    const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 50000); // Far plane increased
+    const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 50000);
     cameraRef.current = camera;
     camera.position.set(INITIAL_CAMERA_POSITION.x, INITIAL_CAMERA_POSITION.y, INITIAL_CAMERA_POSITION.z);
     camera.updateProjectionMatrix();
@@ -466,8 +467,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     }
     
     objectsMapRef.current.forEach(mappedObj => {
-        const simObj = simulationObjectsRef.current.get(mappedObj.mainMesh.name); // Use mesh name as ID
-        if (simObj && (simObj.name === "Sun")) { // Check by name
+        const simObj = simulationObjectsRef.current.get(mappedObj.mainMesh.name); 
+        if (simObj && (simObj.name === "Sun")) { 
             mappedObj.mainMesh.castShadow = false; 
         } else {
             const dirLightCastsShadows = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
@@ -570,6 +571,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         const material = new THREE.MeshStandardMaterial({
              color: new THREE.Color(simObj.color),
         });
+        material.map = null; 
+        material.emissiveMap = null;
         
         if (simObj.name === "Sun") {
             material.emissive.set(new THREE.Color(simObj.color));
@@ -652,6 +655,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         }
 
         const material = threeMesh.material as THREE.MeshStandardMaterial;
+        material.map = null; 
+        material.emissiveMap = null; 
                 
         if (simObj.color !== objData.color || material.color.getHexString() !== new THREE.Color(objData.color).getHexString().substring(1)) { 
              material.color.set(new THREE.Color(objData.color));
@@ -822,6 +827,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             threeMesh.geometry = new THREE.SphereGeometry(propRadius, 32, 32);
           }
           const material = threeMesh.material as THREE.MeshStandardMaterial;
+          material.map = null; 
+          material.emissiveMap = null;
           
           material.color.set(new THREE.Color(objData.color));
             
@@ -924,5 +931,4 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
 export default SpaceTimeCanvas;
 
-
-
+    
