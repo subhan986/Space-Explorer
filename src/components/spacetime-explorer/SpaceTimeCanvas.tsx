@@ -313,7 +313,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     const initialBgColor = new THREE.Color(0x0A0A1A); 
-    scene.fog = new THREE.Fog(0x050510, 7000, 25000); 
+    scene.fog = new THREE.Fog(0x050510, 7000, 25000);
 
     const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 50000);
     cameraRef.current = camera;
@@ -616,10 +616,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             const diskOuterRadius = simObj.radius * 5;   
             const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
             const diskMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xFFA500, 
+                color: 0xFFE066, // Brighter orange-yellow
                 side: THREE.DoubleSide, 
                 transparent: true, 
-                opacity: 0.6, 
+                opacity: 0.7, // Slightly increased opacity
                 blending: THREE.AdditiveBlending 
             });
             const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
@@ -704,10 +704,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 const diskOuterRadius = simObj.radius * 5;
                 const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
                 const diskMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0xFFA500, 
+                    color: 0xFFE066,  // Brighter orange-yellow
                     side: THREE.DoubleSide, 
                     transparent: true, 
-                    opacity: 0.6,
+                    opacity: 0.7, // Slightly increased opacity
                     blending: THREE.AdditiveBlending
                 });
                 const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
@@ -718,8 +718,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 mappedObj.accretionDiskMesh = accretionDiskMesh;
             } else { 
                 const diskMaterial = mappedObj.accretionDiskMesh.material as THREE.MeshBasicMaterial;
-                diskMaterial.color.set(0xFFA500); 
-                diskMaterial.opacity = 0.6;
+                diskMaterial.color.set(0xFFE066); // Brighter orange-yellow
+                diskMaterial.opacity = 0.7; // Slightly increased opacity
                 diskMaterial.blending = THREE.AdditiveBlending;
                 diskMaterial.needsUpdate = true; 
             }
@@ -873,8 +873,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 diskMesh.geometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
               }
               const diskMaterial = diskMesh.material as THREE.MeshBasicMaterial;
-              diskMaterial.color.set(0xFFA500); 
-              diskMaterial.opacity = 0.6;
+              diskMaterial.color.set(0xFFE066); // Brighter orange-yellow
+              diskMaterial.opacity = 0.7; // Slightly increased opacity
               diskMaterial.blending = THREE.AdditiveBlending;
               diskMaterial.castShadow = false;
               diskMaterial.receiveShadow = false;
@@ -882,10 +882,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             } else { 
                 const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
                 const diskMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0xFFA500, 
+                    color: 0xFFE066, // Brighter orange-yellow
                     side: THREE.DoubleSide, 
                     transparent: true, 
-                    opacity: 0.6,
+                    opacity: 0.7, // Slightly increased opacity
                     blending: THREE.AdditiveBlending 
                 });
                 const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
