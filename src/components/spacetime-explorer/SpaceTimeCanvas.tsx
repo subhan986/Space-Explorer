@@ -312,9 +312,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     sceneRef.current = scene;
     const initialBgColor = new THREE.Color(0x0A0A1A); 
     scene.background = initialBgColor;
-    scene.fog = new THREE.Fog(0x050510, 700, 2000); // Dark fog, starts at 700, full at 2000
+    scene.fog = new THREE.Fog(0x050510, 7000, 25000); // Dark fog, starts at 7000, full at 25000
 
-    const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 5000);
+    const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 50000); // Far plane increased
     cameraRef.current = camera;
     camera.position.set(INITIAL_CAMERA_POSITION.x, INITIAL_CAMERA_POSITION.y, INITIAL_CAMERA_POSITION.z);
     camera.updateProjectionMatrix();
@@ -557,8 +557,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             mappedObj.mainMesh.geometry.dispose();
             const oldMaterial = mappedObj.mainMesh.material as THREE.MeshStandardMaterial;
             oldMaterial.dispose();
-            oldMaterial.map?.dispose(); 
-            oldMaterial.emissiveMap?.dispose(); 
+            
             if (mappedObj.accretionDiskMesh) {
                 mappedObj.mainMesh.remove(mappedObj.accretionDiskMesh); 
                 mappedObj.accretionDiskMesh.geometry.dispose();
@@ -570,8 +569,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         const geometry = new THREE.SphereGeometry(simObj.radius, 32, 32);
         const material = new THREE.MeshStandardMaterial({
             color: new THREE.Color(simObj.color),
-            map: null,
-            emissiveMap: null,
         });
         
         if (simObj.name === "Sun") {
@@ -655,9 +652,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         }
 
         const material = threeMesh.material as THREE.MeshStandardMaterial;
-        material.map = null; 
-        material.emissiveMap = null;
-        
+                
         if (simObj.color !== objData.color || material.color.getHexString() !== new THREE.Color(objData.color).getHexString().substring(1)) { 
              material.color.set(new THREE.Color(objData.color));
              visualReset = true; 
@@ -763,9 +758,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           mappedObjToRemove.mainMesh.geometry.dispose();
           const oldMaterial = mappedObjToRemove.mainMesh.material as THREE.MeshStandardMaterial;
           oldMaterial.dispose();
-          oldMaterial.map?.dispose(); 
-          oldMaterial.emissiveMap?.dispose();
-
+          
           if (mappedObjToRemove.accretionDiskMesh) { 
             mappedObjToRemove.mainMesh.remove(mappedObjToRemove.accretionDiskMesh); 
             mappedObjToRemove.accretionDiskMesh.geometry.dispose();
@@ -831,8 +824,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           const material = threeMesh.material as THREE.MeshStandardMaterial;
           
           material.color.set(new THREE.Color(objData.color));
-          material.map = null; 
-          material.emissiveMap = null;
             
             const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
             if (objData.name === "Sun") {
@@ -932,4 +923,5 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
+
 
