@@ -7,6 +7,7 @@ import type { SceneObject, ObjectType, LightingMode } from '@/types/spacetime';
 import { GRID_SIZE, GRID_DIVISIONS, INITIAL_CAMERA_POSITION, G_CONSTANT } from '@/lib/constants';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { useCustomization } from '@/contexts/CustomizationContext'; 
 
 interface SpaceTimeCanvasProps {
   objects: SceneObject[];
@@ -49,6 +50,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   showShadows,
   lightingMode,
 }) => {
+  const { settings: customizationSettings } = useCustomization();
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -264,7 +266,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     if (!originalPositions) return;
 
     const vertex = new THREE.Vector3();
-    const maxDisplacement = 200; // Max visual depth of the well
+    const maxDisplacement = 200; 
 
     if (objectsWithMassForGrid.length === 0) {
       for (let i = 0; i < positions.count; i++) {
@@ -346,10 +348,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const planeGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE, GRID_DIVISIONS, GRID_DIVISIONS);
     const planeMaterial = new THREE.MeshStandardMaterial({
-      color: 0x8A2BE2, 
+      color: new THREE.Color(customizationSettings.gridColor),
       wireframe: true,
       transparent: true,
-      opacity: 0.3,
+      opacity: customizationSettings.gridOpacity,
       metalness: 0.1,
       roughness: 0.9,
     });
@@ -432,6 +434,16 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
+
+  useEffect(() => {
+    if (gridPlaneRef.current) {
+      const material = gridPlaneRef.current.material as THREE.MeshStandardMaterial;
+      material.color.set(new THREE.Color(customizationSettings.gridColor));
+      material.opacity = customizationSettings.gridOpacity;
+      material.needsUpdate = true; // Ensure Three.js updates the material
+    }
+  }, [customizationSettings.gridColor, customizationSettings.gridOpacity]);
+
 
   useEffect(() => {
     if (!ambientLightRef.current || !directionalLightRef.current || !pointLightRef.current) return;
@@ -929,5 +941,3 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
-
-    

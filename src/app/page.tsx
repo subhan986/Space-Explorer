@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import UICustomizer from '@/components/ui-customizer/UICustomizer';
+import { CustomizationProvider } from '@/contexts/CustomizationContext';
 
 const SpaceTimeCanvas = dynamic(() => import('@/components/spacetime-explorer/SpaceTimeCanvas'), {
   ssr: false, 
@@ -92,75 +93,77 @@ export default function SpacetimeExplorerPage() {
 
 
   return (
-    <SidebarProvider defaultOpen={true}>
-      <Sidebar
-        collapsible="offcanvas"
-        className="max-w-sm" 
-        variant="floating" 
-      >
-        <SidebarContent className="p-0">
-          <ControlPanel
-            objects={objects}
-            selectedObjectId={selectedObjectId}
-            simulationStatus={simulationStatus}
-            simulationSpeed={simulationSpeed}
-            showTrajectories={showTrajectories}
-            trajectoryLength={trajectoryLength}
-            showShadows={showShadows}
-            lightingMode={lightingMode}
-            onAddObject={handleAddObject}
-            onUpdateObject={handleUpdateObject}
-            onRemoveObject={handleRemoveObject}
-            onSelectObject={handleSelectObject}
-            onSetSimulationStatus={setSimulationStatus}
-            onSetSimulationSpeed={setSimulationSpeed}
-            onResetSimulation={handleResetSimulation}
-            onSetShowTrajectories={setShowTrajectories}
-            onSetTrajectoryLength={setTrajectoryLength}
-            onSetShowShadows={setShowShadows}
-            onSetLightingMode={setLightingMode}
-          />
-        </SidebarContent>
-      </Sidebar>
-      <SidebarInset className="flex flex-col h-screen bg-background">
-        <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-background z-10">
-          {/* Left side: UI Customizer Trigger */}
-          <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="rounded-md border-2 border-primary hover:bg-primary/10 active:bg-primary/20">
-                <Palette className="h-5 w-5 text-primary" />
-                <span className="sr-only">Open UI Customizer</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm p-0 flex flex-col overflow-y-auto">
-              <UICustomizer />
-            </SheetContent>
-          </Sheet>
-
-          {/* Center: App Title */}
-          <h1 className="text-lg font-semibold text-foreground flex-1 text-center truncate px-2">
-            Spacetime Explorer
-          </h1>
-
-          {/* Right side: Main Control Panel Sidebar Trigger */}
-          <SidebarTrigger className="rounded-full">
-            <Settings />
-          </SidebarTrigger>
-        </header>
-        <main className="flex-1 overflow-hidden p-1 md:p-2">
-            <SpaceTimeCanvas
+    <CustomizationProvider>
+      <SidebarProvider defaultOpen={true}>
+        <Sidebar
+          collapsible="offcanvas"
+          className="max-w-sm" 
+          variant="floating" 
+        >
+          <SidebarContent className="p-0">
+            <ControlPanel
               objects={objects}
+              selectedObjectId={selectedObjectId}
               simulationStatus={simulationStatus}
               simulationSpeed={simulationSpeed}
-              onObjectSelected={handleSelectObject} 
               showTrajectories={showTrajectories}
               trajectoryLength={trajectoryLength}
-              onObjectsCollidedAndMerged={handleObjectsCollidedAndMerged}
               showShadows={showShadows}
               lightingMode={lightingMode}
+              onAddObject={handleAddObject}
+              onUpdateObject={handleUpdateObject}
+              onRemoveObject={handleRemoveObject}
+              onSelectObject={handleSelectObject}
+              onSetSimulationStatus={setSimulationStatus}
+              onSetSimulationSpeed={setSimulationSpeed}
+              onResetSimulation={handleResetSimulation}
+              onSetShowTrajectories={setShowTrajectories}
+              onSetTrajectoryLength={setTrajectoryLength}
+              onSetShowShadows={setShowShadows}
+              onSetLightingMode={setLightingMode}
             />
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+          </SidebarContent>
+        </Sidebar>
+        <SidebarInset className="flex flex-col h-screen bg-background">
+          <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-background z-10">
+            {/* Left side: UI Customizer Trigger */}
+            <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-md border-2 border-primary hover:bg-primary/10 active:bg-primary/20">
+                  <Palette className="h-5 w-5 text-primary" />
+                  <span className="sr-only">Open UI Customizer</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm p-0 flex flex-col overflow-y-auto">
+                <UICustomizer />
+              </SheetContent>
+            </Sheet>
+
+            {/* Center: App Title */}
+            <h1 className="text-lg font-semibold text-foreground flex-1 text-center truncate px-2">
+              Spacetime Explorer
+            </h1>
+
+            {/* Right side: Main Control Panel Sidebar Trigger */}
+            <SidebarTrigger className="rounded-full">
+              <Settings />
+            </SidebarTrigger>
+          </header>
+          <main className="flex-1 overflow-hidden p-1 md:p-2">
+              <SpaceTimeCanvas
+                objects={objects}
+                simulationStatus={simulationStatus}
+                simulationSpeed={simulationSpeed}
+                onObjectSelected={handleSelectObject} 
+                showTrajectories={showTrajectories}
+                trajectoryLength={trajectoryLength}
+                onObjectsCollidedAndMerged={handleObjectsCollidedAndMerged}
+                showShadows={showShadows}
+                lightingMode={lightingMode}
+              />
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </CustomizationProvider>
   );
 }

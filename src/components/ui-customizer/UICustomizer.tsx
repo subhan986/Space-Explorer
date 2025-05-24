@@ -1,3 +1,4 @@
+
 // src/components/ui-customizer/UICustomizer.tsx
 'use client';
 
@@ -6,56 +7,150 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { useCustomization } from "@/contexts/CustomizationContext";
+import { HexColorPicker } from "react-colorful";
+import React from "react";
+
+interface ThemeColorControlProps {
+  label: string;
+  colorKey: 'themeBackground' | 'themeForeground' | 'themePrimary' | 'themeAccent';
+}
+
+const ThemeColorControl: React.FC<ThemeColorControlProps> = ({ label, colorKey }) => {
+  const { settings, updateThemeColorValue } = useCustomization();
+  const color = settings[colorKey];
+
+  const handleInputChange = (component: 'h' | 's' | 'l', value: string) => {
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue)) {
+      updateThemeColorValue(colorKey, component, numValue);
+    } else if (value === "") { // Allow clearing input, treat as 0 or default
+      updateThemeColorValue(colorKey, component, 0);
+    }
+  };
+
+
+  return (
+    <div className="space-y-2 p-3 border border-border rounded-lg shadow-sm bg-card">
+      <Label className="text-base font-semibold text-card-foreground">{label}</Label>
+      <div className="grid grid-cols-3 gap-3 items-center">
+        <div>
+          <Label htmlFor={`${colorKey}-h`} className="text-xs text-muted-foreground db-1">H (0-359)</Label>
+          <Input
+            id={`${colorKey}-h`}
+            type="number"
+            min="0" max="359" step="1"
+            value={color.h}
+            onChange={(e) => handleInputChange('h', e.target.value)}
+            className="w-full h-9 text-sm p-2"
+          />
+        </div>
+        <div>
+          <Label htmlFor={`${colorKey}-s`} className="text-xs text-muted-foreground db-1">S (0-100%)</Label>
+          <Input
+            id={`${colorKey}-s`}
+            type="number"
+            min="0" max="100" step="1"
+            value={color.s}
+            onChange={(e) => handleInputChange('s', e.target.value)}
+            className="w-full h-9 text-sm p-2"
+          />
+        </div>
+        <div>
+          <Label htmlFor={`${colorKey}-l`} className="text-xs text-muted-foreground db-1">L (0-100%)</Label>
+          <Input
+            id={`${colorKey}-l`}
+            type="number"
+            min="0" max="100" step="1"
+            value={color.l}
+            onChange={(e) => handleInputChange('l', e.target.value)}
+            className="w-full h-9 text-sm p-2"
+          />
+        </div>
+      </div>
+       <div 
+        className="w-full h-8 rounded-md border border-border mt-2" 
+        style={{ backgroundColor: `hsl(${color.h}, ${color.s}%, ${color.l}%)`}}
+        title={`hsl(${color.h}, ${color.s}%, ${color.l}%)`}
+      />
+    </div>
+  );
+};
 
 export default function UICustomizer() {
+  const { settings, updateSetting, resetSettings } = useCustomization();
+
   return (
     <>
-      <SheetHeader className="p-4 border-b bg-background sticky top-0 z-10">
-        <SheetTitle>UI Customizer</SheetTitle>
-        <SheetDescription>
-          Adjust the look and feel of the application. (Controls are placeholders)
+      <SheetHeader className="p-4 border-b bg-card sticky top-0 z-10">
+        <SheetTitle className="text-card-foreground">UI Customizer</SheetTitle>
+        <SheetDescription className="text-muted-foreground">
+          Adjust the look and feel. Changes are saved locally.
         </SheetDescription>
       </SheetHeader>
-      <div className="p-4 space-y-6 flex-1">
+      <div className="p-4 space-y-6 flex-1 overflow-y-auto bg-background text-foreground">
         <section>
-          <h3 className="text-lg font-medium mb-3 text-foreground">Theme Colors</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="bgColor" className="text-muted-foreground">Background</Label>
-              <Input id="bgColor" type="color" defaultValue="#1A202C" className="w-16 h-8 p-1 rounded-md border-input" disabled />
+          <h3 className="text-xl font-semibold mb-4">Theme Colors</h3>
+          <div className="space-y-4">
+            <ThemeColorControl label="Background" colorKey="themeBackground" />
+            <ThemeColorControl label="Foreground" colorKey="themeForeground" />
+            <ThemeColorControl label="Primary" colorKey="themePrimary" />
+            <ThemeColorControl label="Accent" colorKey="themeAccent" />
+          </div>
+        </section>
+        <Separator />
+        <section>
+          <h3 className="text-xl font-semibold mb-4">Grid Customization</h3>
+          <div className="space-y-6 p-3 border border-border rounded-lg shadow-sm bg-card">
+            <div>
+              <Label htmlFor="gridColor" className="text-base font-semibold text-card-foreground mb-2 block">Grid Color</Label>
+              <div className="flex items-center gap-2 mb-2">
+                <Input
+                  id="gridColorInput"
+                  type="text"
+                  value={settings.gridColor}
+                  onChange={(e) => updateSetting('gridColor', e.target.value)}
+                  className="w-1/2 h-9 p-2 text-sm"
+                  placeholder="#RRGGBB"
+                />
+                <div style={{ backgroundColor: settings.gridColor, width: '28px', height: '28px', borderRadius: '4px', border: '1px solid hsl(var(--border))' }} />
+              </div>
+              <HexColorPicker 
+                color={settings.gridColor} 
+                onChange={(newColor) => updateSetting('gridColor', newColor)} 
+                style={{ width: '100%'}}
+              />
             </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="fgColor" className="text-muted-foreground">Foreground</Label>
-              <Input id="fgColor" type="color" defaultValue="#E0E0E0" className="w-16 h-8 p-1 rounded-md border-input" disabled />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="primaryColor" className="text-muted-foreground">Primary</Label>
-              <Input id="primaryColor" type="color" defaultValue="#3B5998" className="w-16 h-8 p-1 rounded-md border-input" disabled />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="accentColor" className="text-muted-foreground">Accent</Label>
-              <Input id="accentColor" type="color" defaultValue="#8A2BE2" className="w-16 h-8 p-1 rounded-md border-input" disabled />
+            <div className="mt-4">
+              <Label htmlFor="gridOpacity" className="text-base font-semibold text-card-foreground">Grid Opacity: {settings.gridOpacity.toFixed(2)}</Label>
+              <Slider
+                id="gridOpacity"
+                min={0} max={1} step={0.01}
+                value={[settings.gridOpacity]}
+                onValueChange={(value) => updateSetting('gridOpacity', value[0])}
+                className="mt-2 [&>span:first-child]:h-2 [&>span>span]:bg-primary [&>span>button]:bg-primary-foreground [&>span>button]:border-primary"
+              />
             </div>
           </div>
         </section>
         <Separator />
         <section>
-          <h3 className="text-lg font-medium mb-3 text-foreground">Layout</h3>
-          <div className="space-y-3">
+          <h3 className="text-xl font-semibold mb-4">Layout (Placeholders)</h3>
+          <div className="space-y-3 p-3 border border-border rounded-lg shadow-sm bg-card">
             <div className="flex items-center justify-between">
-              <Label className="text-muted-foreground">Sidebar Width</Label>
-              <Input type="number" defaultValue="320" className="w-24 h-8 rounded-md border-input" disabled />
+              <Label className="text-card-foreground">Sidebar Width</Label>
+              <Input type="number" defaultValue="320" className="w-24 h-9 rounded-md border-input text-sm p-2" disabled />
             </div>
             <div className="flex items-center justify-between">
-              <Label className="text-muted-foreground">Font Size (Base)</Label>
-              <Input type="number" defaultValue="16" className="w-24 h-8 rounded-md border-input" disabled />
+              <Label className="text-card-foreground">Font Size (Base)</Label>
+              <Input type="number" defaultValue="16" className="w-24 h-9 rounded-md border-input text-sm p-2" disabled />
             </div>
           </div>
         </section>
         <Separator />
-        <div className="pt-2 flex justify-end">
-            <Button variant="outline" disabled>Reset to Defaults</Button>
-            <Button className="ml-2" disabled>Apply Changes</Button>
+        <div className="pt-4 pb-2 flex justify-end sticky bottom-0 bg-background border-t border-border -mx-4 px-4">
+            <Button variant="outline" onClick={resetSettings} className="border-primary text-primary hover:bg-primary/10">Reset to Defaults</Button>
         </div>
       </div>
     </>
