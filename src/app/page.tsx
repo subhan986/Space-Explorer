@@ -5,16 +5,18 @@
 import React, { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarContent, SidebarTrigger } from '@/components/ui/sidebar';
-// import SpaceTimeCanvas from '@/components/spacetime-explorer/SpaceTimeCanvas'; // Original import
 import ControlPanel from '@/components/spacetime-explorer/ControlPanel';
 import type { SceneObject, LightingMode } from '@/types/spacetime';
 import { DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
-import { Settings } from 'lucide-react';
+import { Settings, Palette } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import UICustomizer from '@/components/ui-customizer/UICustomizer';
 
 const SpaceTimeCanvas = dynamic(() => import('@/components/spacetime-explorer/SpaceTimeCanvas'), {
-  ssr: false, // 3D canvases often don't benefit from SSR and can cause issues
+  ssr: false, 
   loading: () => (
     <div className="w-full h-full flex items-center justify-center bg-background">
       <Skeleton className="w-3/4 h-3/4" />
@@ -33,6 +35,7 @@ export default function SpacetimeExplorerPage() {
   const [showShadows, setShowShadows] = useState<boolean>(true);
   const [lightingMode, setLightingMode] = useState<LightingMode>("Realistic Solar");
   const { toast } = useToast();
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
 
   const handleAddObject = useCallback((object: SceneObject) => {
     setObjects(prev => [...prev, object]);
@@ -55,7 +58,6 @@ export default function SpacetimeExplorerPage() {
 
   const handleResetSimulation = useCallback(() => {
     setSimulationStatus('stopped');
-    // Objects will be reset to their initial prop states by SpaceTimeCanvas logic when status is 'stopped'
   }, []);
 
   const handleObjectsCollidedAndMerged = useCallback((absorbedObjectId: string, absorberObjectId: string, absorbedObjectMass: number) => {
@@ -121,11 +123,29 @@ export default function SpacetimeExplorerPage() {
         </SidebarContent>
       </Sidebar>
       <SidebarInset className="flex flex-col h-screen bg-background">
-        <header className="p-2 border-b border-border flex items-center gap-2 h-[var(--sidebar-width-icon)] md:h-auto sticky top-0 bg-background z-10">
-            <SidebarTrigger className="rounded-full">
-                <Settings />
-            </SidebarTrigger>
-            <h1 className="text-md md:text-lg font-semibold text-foreground">3D Visualization Area</h1>
+        <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-background z-10">
+          {/* Left side: UI Customizer Trigger */}
+          <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="rounded-md border-2 border-primary hover:bg-primary/10 active:bg-primary/20">
+                <Palette className="h-5 w-5 text-primary" />
+                <span className="sr-only">Open UI Customizer</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm p-0 flex flex-col overflow-y-auto">
+              <UICustomizer />
+            </SheetContent>
+          </Sheet>
+
+          {/* Center: App Title */}
+          <h1 className="text-lg font-semibold text-foreground flex-1 text-center truncate px-2">
+            Spacetime Explorer
+          </h1>
+
+          {/* Right side: Main Control Panel Sidebar Trigger */}
+          <SidebarTrigger className="rounded-full">
+            <Settings />
+          </SidebarTrigger>
         </header>
         <main className="flex-1 overflow-hidden p-1 md:p-2">
             <SpaceTimeCanvas
