@@ -9,8 +9,8 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 13%; /* #222222 very dark gray */
-    --foreground: 0 0% 90%; /* Light gray/off-white for text */
+    --background: 0 0% 8%; /* Very dark gray, almost black */
+    --foreground: 0 0% 90%; /* Light gray for text */
 
     --card: 0 0% 10%; /* Slightly lighter than background */
     --card-foreground: 0 0% 90%;
@@ -18,8 +18,8 @@ body {
     --popover: 0 0% 8%; /* Darker for popovers */
     --popover-foreground: 0 0% 90%;
 
-    --primary: 220 43% 41%; /* #3B5998 deep space blue */
-    --primary-foreground: 0 0% 98%; /* White */
+    --primary: 220 43% 41%; /* Using main theme primary - deep space blue */
+    --primary-foreground: 0 0% 98%; /* White text on primary */
 
     --secondary: 0 0% 20%; /* A slightly lighter gray for secondary elements */
     --secondary-foreground: 0 0% 98%;
@@ -33,8 +33,8 @@ body {
     --destructive: 0 70% 50%; /* A typical red for destructive actions */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 25%; /* Borders that are visible but not too stark */
-    --input: 0 0% 25%;  /* Input background */
+    --border: 0 0% 18%; /* Border for dark theme */
+    --input: 0 0% 18%;  /* Input background for dark theme */
     --ring: 271 76% 65%; /* Ring color related to accent */
     
     --chart-1: 12 76% 61%;
@@ -74,13 +74,13 @@ body {
 .object-name-label {
   color: white;
   font-family: var(--font-geist-sans), Arial, sans-serif;
-  font-size: 12px;
-  padding: 2px 5px;
-  background-color: rgba(0, 0, 0, 0.6);
-  border-radius: 4px;
-  text-shadow: 0 0 4px black;
+  font-size: 10px; /* Smaller font size */
+  padding: 1px 4px; /* Adjusted padding */
+  background-color: rgba(0, 0, 0, 0.4); /* More translucent background */
+  border-radius: 3px; /* Slightly smaller border radius */
+  text-shadow: 0 0 3px black; /* Soft shadow for better readability */
   white-space: nowrap;
-  transform: translate(-50%, -100%); /* Position above and centered */
-  pointer-events: none;
+  transform: translate(-50%, -100%); /* Position above and centered horizontally */
+  pointer-events: none; /* Ensure labels don't intercept mouse events */
   user-select: none;
 }
