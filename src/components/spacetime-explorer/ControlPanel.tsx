@@ -14,6 +14,9 @@ import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Library, Sun, 
 import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, Vector3, MassiveObject, LightingMode } from '@/types/spacetime';
 import { PRESET_SCENARIOS } from '@/lib/preset-scenarios';
+import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+// Removed: import SpacecraftDesigner2D from './SpacecraftDesigner2D'; // This component was removed earlier
+
 
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -56,7 +59,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   const { toast } = useToast();
   const [editingObjectType, setEditingObjectType] = useState<ObjectType | null>(null);
   const [formInitialData, setFormInitialData] = useState<Partial<SceneObject> | undefined>(undefined);
-
+  // const [isDesignerOpen, setIsDesignerOpen] = useState(false); // State for SpacecraftDesigner Sheet was removed
 
   const selectedObject = props.objects.find(obj => obj.id === props.selectedObjectId);
 
@@ -235,18 +238,18 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground rounded-lg shadow-lg overflow-hidden">
-      <div className="p-4">
-        <h2 className="text-2xl font-semibold mb-4 text-sidebar-foreground">Spacetime Explorer</h2>
-        <Separator className="mb-4 bg-sidebar-border" />
+      <div className="p-3"> {/* Reduced padding */}
+        <h2 className="text-xl font-semibold mb-3 text-sidebar-foreground">Spacetime Explorer</h2> {/* Reduced text size and margin */}
+        <Separator className="mb-3 bg-sidebar-border" /> {/* Reduced margin */}
       </div>
-      <ScrollArea className="flex-grow p-4 pt-0">
-        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-5', 'item-4', 'item-save-load', 'item-presets']} className="w-full">
+      <ScrollArea className="flex-grow p-3 pt-0"> {/* Reduced padding */}
+        <Accordion type="multiple" defaultValue={['item-1', 'item-2']} className="w-full"> {/* Changed default open sections */}
 
           <AccordionItem value="item-1" className="border-b-0">
-            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
+            <AccordionTrigger className="hover:no-underline py-2 text-sidebar-foreground"> {/* Reduced padding */}
               <Settings2 className="mr-2 h-5 w-5" /> Object Management
             </AccordionTrigger>
-            <AccordionContent className="pt-2 space-y-4">
+            <AccordionContent className="pt-2 space-y-3"> {/* Reduced spacing */}
               <div className="flex flex-col space-y-2">
                 <Button size="sm" onClick={() => handleAddObjectClick('massive')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"><PlusCircle className="mr-2 h-4 w-4" /> Add Massive</Button>
                 <Button size="sm" onClick={() => handleAddObjectClick('orbiter')} className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"><PlusCircle className="mr-2 h-4 w-4" /> Add Orbiter</Button>
@@ -254,10 +257,10 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 
               {(editingObjectType || selectedObject) && (
                 <Card className="bg-card text-card-foreground border-sidebar-border">
-                  <CardHeader className="px-3 py-2">
-                    <CardTitle className="text-md text-sidebar-foreground">{editingObjectType ? `Add New ${editingObjectType === 'massive' ? 'Massive' : 'Orbiter'} Object` : `Edit: ${selectedObject?.name}`}</CardTitle>
+                  <CardHeader className="px-2 py-1.5"> {/* Reduced padding */}
+                    <CardTitle className="text-sm text-sidebar-foreground">{editingObjectType ? `Add New ${editingObjectType === 'massive' ? 'Massive' : 'Orbiter'} Object` : `Edit: ${selectedObject?.name}`}</CardTitle> {/* Reduced text size */}
                   </CardHeader>
-                  <CardContent className="px-3 py-4 pt-0">
+                  <CardContent className="px-3 py-3 pt-0"> {/* Adjusted padding */}
                     <ObjectForm
                       key={selectedObject?.id || editingObjectType || 'new-object-form'} 
                       objectType={editingObjectType || selectedObject!.type} 
@@ -270,23 +273,23 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                 </Card>
               )}
 
-              <Separator className="my-4 bg-sidebar-border" />
-              <Label className="text-sidebar-foreground/80">Scene Objects:</Label>
-              {props.objects.length === 0 && <p className="text-sm text-sidebar-muted-foreground">No objects in scene.</p>}
-              <div className="max-h-40 space-y-1 overflow-y-auto">
+              <Separator className="my-3 bg-sidebar-border" /> {/* Reduced margin */}
+              <Label className="text-sidebar-foreground/80 text-sm">Scene Objects:</Label> {/* Ensured text size is appropriate */}
+              {props.objects.length === 0 && <p className="text-xs text-sidebar-muted-foreground">No objects in scene.</p>}
+              <div className="max-h-32 space-y-1 overflow-y-auto"> {/* Reduced max-h, reduced space-y */}
                 {props.objects.map(obj => (
                   <div key={obj.id}
-                       className={`flex items-center justify-between p-2 rounded-md cursor-pointer
+                       className={`flex items-center justify-between p-1.5 rounded-md cursor-pointer {/* Reduced padding */}
                                    hover:bg-sidebar-accent hover:text-sidebar-accent-foreground
                                    ${props.selectedObjectId === obj.id
                                      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                                      : 'bg-sidebar-background text-sidebar-foreground hover:bg-opacity-75'}`}
                        onClick={() => { props.onSelectObject(obj.id); setEditingObjectType(null); }}>
                     <div className="flex items-center truncate">
-                       <span className="truncate" style={{color: props.selectedObjectId === obj.id ? 'hsl(var(--sidebar-accent-foreground))' : obj.color, fontWeight: props.selectedObjectId === obj.id ? 'bold' : 'normal'}}>{obj.name} ({obj.type}, M: {obj.mass.toFixed(1)})</span>
+                       <span className="truncate text-xs" style={{color: props.selectedObjectId === obj.id ? 'hsl(var(--sidebar-accent-foreground))' : obj.color, fontWeight: props.selectedObjectId === obj.id ? 'bold' : 'normal'}}>{obj.name} ({obj.type}, M: {obj.mass.toFixed(1)})</span> {/* Reduced text size */}
                     </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-sidebar-destructive-foreground hover:bg-destructive/30 flex-shrink-0" onClick={(e) => { e.stopPropagation(); props.onRemoveObject(obj.id); }}>
-                      <Trash2 className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="h-5 w-5 text-sidebar-destructive-foreground hover:bg-destructive/30 flex-shrink-0" onClick={(e) => { e.stopPropagation(); props.onRemoveObject(obj.id); }}> {/* Reduced button size */}
+                      <Trash2 className="h-3 w-3" /> {/* Reduced icon size */}
                     </Button>
                   </div>
                 ))}
@@ -295,10 +298,10 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
           </AccordionItem>
 
           <AccordionItem value="item-2" className="border-b-0">
-            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
+            <AccordionTrigger className="hover:no-underline py-2 text-sidebar-foreground"> {/* Reduced padding */}
               <Play className="mr-2 h-5 w-5" /> Simulation Controls
             </AccordionTrigger>
-            <AccordionContent className="pt-2 space-y-4">
+            <AccordionContent className="pt-2 space-y-3"> {/* Reduced spacing */}
               <div className="flex space-x-2">
                 <Button
                   size="sm"
@@ -319,31 +322,31 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               </div>
               <Button size="sm" onClick={props.onResetSimulation} variant="outline" className="w-full border-sidebar-primary text-sidebar-primary hover:bg-sidebar-primary/10"><SkipForward className="mr-2 h-4 w-4" /> Reset Simulation</Button>
 
-              <div className="space-y-2">
-                <Label htmlFor="simSpeed" className="text-sidebar-foreground/80">Speed: {props.simulationSpeed.toFixed(1)}x</Label>
+              <div className="space-y-1.5"> {/* Reduced spacing */}
+                <Label htmlFor="simSpeed" className="text-sidebar-foreground/80 text-xs">Speed: {props.simulationSpeed.toFixed(1)}x</Label> {/* Reduced text size */}
                 <Slider
                   id="simSpeed"
                   min={MIN_SIMULATION_SPEED} max={MAX_SIMULATION_SPEED} step={0.1}
                   value={[props.simulationSpeed]}
                   onValueChange={(val) => props.onSetSimulationSpeed(val[0])}
-                  className="[&>span:first-child]:h-2 [&>span>span]:bg-sidebar-primary [&>span>button]:bg-sidebar-primary-foreground [&>span>button]:border-sidebar-primary"
+                  className="[&>span:first-child]:h-1.5 [&>span>span]:bg-sidebar-primary [&>span>button]:bg-sidebar-primary-foreground [&>span>button]:border-sidebar-primary [&>span>button]:h-4 [&>span>button]:w-4" /* Reduced slider height/thumb */
                 />
               </div>
-              <div className="flex items-center justify-between pt-2">
-                <Label htmlFor="show-trajectories" className="text-sidebar-foreground/80">Show Trajectories</Label>
+              <div className="flex items-center justify-between pt-1.5"> {/* Reduced padding */}
+                <Label htmlFor="show-trajectories" className="text-sidebar-foreground/80 text-xs">Show Trajectories</Label> {/* Reduced text size */}
                 <Switch id="show-trajectories" checked={props.showTrajectories} onCheckedChange={props.onSetShowTrajectories}
-                  className="data-[state=checked]:bg-sidebar-primary data-[state=unchecked]:bg-input"
+                  className="data-[state=checked]:bg-sidebar-primary data-[state=unchecked]:bg-input h-4 w-7 [&>span]:h-3 [&>span]:w-3 [&>span[data-state=checked]]:translate-x-3.5" /* Reduced switch size */
                 />
               </div>
               {props.showTrajectories && (
-                <div className="space-y-2">
-                  <Label htmlFor="trajectoryLength" className="text-sidebar-foreground/80">Trajectory Length: {props.trajectoryLength}</Label>
+                <div className="space-y-1.5"> {/* Reduced spacing */}
+                  <Label htmlFor="trajectoryLength" className="text-sidebar-foreground/80 text-xs">Trajectory Length: {props.trajectoryLength}</Label> {/* Reduced text size */}
                   <Slider
                     id="trajectoryLength"
                     min={50} max={500} step={10}
                     value={[props.trajectoryLength]}
                     onValueChange={(val) => props.onSetTrajectoryLength(val[0])}
-                    className="[&>span:first-child]:h-2 [&>span>span]:bg-sidebar-primary [&>span>button]:bg-sidebar-primary-foreground [&>span>button]:border-sidebar-primary"
+                    className="[&>span:first-child]:h-1.5 [&>span>span]:bg-sidebar-primary [&>span>button]:bg-sidebar-primary-foreground [&>span>button]:border-sidebar-primary [&>span>button]:h-4 [&>span>button]:w-4" /* Reduced slider height/thumb */
                   />
                 </div>
               )}
@@ -351,19 +354,19 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
           </AccordionItem>
           
           <AccordionItem value="item-presets" className="border-b-0">
-            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
+            <AccordionTrigger className="hover:no-underline py-2 text-sidebar-foreground"> {/* Reduced padding */}
               <BookOpenCheck className="mr-2 h-5 w-5" /> Preset Scenarios
             </AccordionTrigger>
-            <AccordionContent className="pt-2 space-y-2">
+            <AccordionContent className="pt-2 space-y-1.5"> {/* Reduced spacing */}
               {Object.entries(PRESET_SCENARIOS).map(([key, scenario]) => (
                 <Button
                   key={key}
                   size="sm"
                   variant="outline"
                   onClick={() => props.onLoadPreset(key)}
-                  className="w-full border-sidebar-primary text-sidebar-primary hover:bg-sidebar-primary/10 flex-col items-start h-auto py-2"
+                  className="w-full border-sidebar-primary text-sidebar-primary hover:bg-sidebar-primary/10 flex-col items-start h-auto py-1.5" /* Reduced padding */
                 >
-                  <span className="font-semibold">{scenario.name}</span>
+                  <span className="font-semibold text-xs">{scenario.name}</span> {/* Reduced text size */}
                   <span className="text-xs text-sidebar-muted-foreground">{scenario.description}</span>
                 </Button>
               ))}
@@ -371,7 +374,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
           </AccordionItem>
 
           <AccordionItem value="item-save-load" className="border-b-0">
-            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
+            <AccordionTrigger className="hover:no-underline py-2 text-sidebar-foreground"> {/* Reduced padding */}
               <SaveIcon className="mr-2 h-5 w-5" /> Save/Load Simulation
             </AccordionTrigger>
             <AccordionContent className="pt-2 space-y-2">
@@ -394,23 +397,23 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
           </AccordionItem>
 
           <AccordionItem value="item-5" className="border-b-0">
-            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
+            <AccordionTrigger className="hover:no-underline py-2 text-sidebar-foreground"> {/* Reduced padding */}
               <Paintbrush className="mr-2 h-5 w-5" /> Rendering Tools
             </AccordionTrigger>
-            <AccordionContent className="pt-2 space-y-4">
+            <AccordionContent className="pt-2 space-y-3"> {/* Reduced spacing */}
               <div className="flex items-center justify-between">
-                <Label htmlFor="show-shadows" className="text-sidebar-foreground/80">Show Shadows</Label>
+                <Label htmlFor="show-shadows" className="text-sidebar-foreground/80 text-xs">Show Shadows</Label> {/* Reduced text size */}
                 <Switch id="show-shadows" checked={props.showShadows} onCheckedChange={props.onSetShowShadows}
-                  className="data-[state=checked]:bg-sidebar-primary data-[state=unchecked]:bg-input"
+                  className="data-[state=checked]:bg-sidebar-primary data-[state=unchecked]:bg-input h-4 w-7 [&>span]:h-3 [&>span]:w-3 [&>span[data-state=checked]]:translate-x-3.5" /* Reduced switch size */
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="lighting-mode" className="text-sidebar-foreground/80">Lighting Mode</Label>
+              <div className="space-y-1.5"> {/* Reduced spacing */}
+                <Label htmlFor="lighting-mode" className="text-sidebar-foreground/80 text-xs">Lighting Mode</Label> {/* Reduced text size */}
                 <Select value={props.lightingMode} onValueChange={(value) => props.onSetLightingMode(value as LightingMode)}>
-                  <SelectTrigger id="lighting-mode" className="w-full bg-input border-sidebar-border text-sidebar-foreground focus:ring-sidebar-ring">
+                  <SelectTrigger id="lighting-mode" className="w-full bg-input border-sidebar-border text-sidebar-foreground focus:ring-sidebar-ring h-8 text-xs"> {/* Reduced height and text size */}
                     <SelectValue placeholder="Select lighting mode" />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border-sidebar-border text-popover-foreground">
+                  <SelectContent className="bg-popover border-sidebar-border text-popover-foreground text-xs"> {/* Reduced text size */}
                     <SelectItem value="Realistic Solar">Realistic Solar</SelectItem>
                     <SelectItem value="Ambient Glow">Ambient Glow</SelectItem>
                     <SelectItem value="Dramatic Edge">Dramatic Edge</SelectItem>
@@ -421,7 +424,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
           </AccordionItem>
 
           <AccordionItem value="item-4" className="border-b-0">
-            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
+            <AccordionTrigger className="hover:no-underline py-2 text-sidebar-foreground"> {/* Reduced padding */}
               <Library className="mr-2 h-5 w-5" /> Real Objects
             </AccordionTrigger>
             <AccordionContent className="pt-2 space-y-2">
@@ -461,3 +464,4 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 };
 
 export default ControlPanel;
+
