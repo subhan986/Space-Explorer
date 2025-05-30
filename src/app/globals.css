@@ -76,7 +76,7 @@ body {
   font-family: var(--font-geist-sans), Arial, sans-serif;
   font-size: 10px; /* Smaller font size */
   padding: 1px 4px; /* Adjusted padding */
-  background-color: rgba(0, 0, 0, 0.4); /* More translucent background */
+  background-color: transparent; /* Fully transparent background */
   border-radius: 3px; /* Slightly smaller border radius */
   text-shadow: 0 0 3px black; /* Soft shadow for better readability */
   white-space: nowrap;
