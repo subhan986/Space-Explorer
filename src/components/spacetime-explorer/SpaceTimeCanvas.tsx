@@ -11,6 +11,7 @@ import { useCustomization } from '@/contexts/CustomizationContext';
 
 interface SpaceTimeCanvasProps {
   objects: SceneObject[];
+  selectedObjectId: string | null; // Added for camera focus
   simulationStatus: 'stopped' | 'running' | 'paused';
   simulationSpeed: number;
   onObjectSelected?: (objectId: string | null) => void;
@@ -41,6 +42,7 @@ interface MappedObject {
 
 const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   objects,
+  selectedObjectId,
   simulationStatus,
   simulationSpeed,
   onObjectSelected,
@@ -440,7 +442,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       const material = gridPlaneRef.current.material as THREE.MeshStandardMaterial;
       material.color.set(new THREE.Color(customizationSettings.gridColor));
       material.opacity = customizationSettings.gridOpacity;
-      material.needsUpdate = true; // Ensure Three.js updates the material
+      material.needsUpdate = true; 
     }
   }, [customizationSettings.gridColor, customizationSettings.gridOpacity]);
 
@@ -501,7 +503,15 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     let lastTimestamp = 0;
     const animate = (timestamp: number) => {
         animationFrameIdRef.current = requestAnimationFrame(animate);
+        
+        if (controlsRef.current && selectedObjectId) {
+          const selectedSimObj = simulationObjectsRef.current.get(selectedObjectId);
+          if (selectedSimObj && isValidVector(selectedSimObj.threePosition)) {
+            controlsRef.current.target.copy(selectedSimObj.threePosition);
+          }
+        }
         controls.update();
+
 
         if (simulationStatus === 'running') {
             const deltaTime = lastTimestamp > 0 ? (timestamp - lastTimestamp) / 1000 : 1/60; 
@@ -533,7 +543,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     };
     animate(0); 
     return () => { if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current); };
-  }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid]);
+  }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid, selectedObjectId, isValidVector]);
 
 
   useEffect(() => {
@@ -587,7 +597,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         
         if (simObj.name === "Sun") {
             material.emissive.set(new THREE.Color(simObj.color));
-            material.emissiveIntensity = 1.0; 
+            material.emissiveIntensity = 1.5; 
             material.metalness = 0.0;
             material.roughness = 0.8;
         } else if (simObj.name === "Earth" || simObj.name === "Moon" || simObj.name === "Jupiter" || simObj.name === "Ceres") {
@@ -678,7 +688,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
         if (simObj.name === "Sun") {
             material.emissive.set(new THREE.Color(simObj.color)); 
-            material.emissiveIntensity = 1.0;
+            material.emissiveIntensity = 1.5;
             material.metalness = 0.0;
             material.roughness = 0.8;
             threeMesh.castShadow = false;
@@ -846,7 +856,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
             if (objData.name === "Sun") {
                 material.emissive.set(new THREE.Color(objData.color));
-                material.emissiveIntensity = 1.0;
+                material.emissiveIntensity = 1.5;
                 material.metalness = 0.0;
                 material.roughness = 0.8;
                 threeMesh.castShadow = false;

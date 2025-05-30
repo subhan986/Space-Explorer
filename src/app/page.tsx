@@ -6,9 +6,10 @@ import React, { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarContent, SidebarTrigger } from '@/components/ui/sidebar';
 import ControlPanel from '@/components/spacetime-explorer/ControlPanel';
-import type { SceneObject, LightingMode } from '@/types/spacetime';
+import type { SceneObject, LightingMode, SavedSimulationState } from '@/types/spacetime';
+import { PRESET_SCENARIOS } from '@/lib/preset-scenarios';
 import { DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
-import { Settings, Palette } from 'lucide-react';
+import { Settings, Palette, BookOpenCheck, SaveIcon } from 'lucide-react'; // Added BookOpenCheck, SaveIcon
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,8 @@ const SpaceTimeCanvas = dynamic(() => import('@/components/spacetime-explorer/Sp
     </div>
   ),
 });
+
+const LOCAL_STORAGE_SAVE_KEY = 'spacetimeExplorerSaveState';
 
 export default function SpacetimeExplorerPage() {
   const [objects, setObjects] = useState<SceneObject[]>([]);
@@ -59,6 +62,8 @@ export default function SpacetimeExplorerPage() {
 
   const handleResetSimulation = useCallback(() => {
     setSimulationStatus('stopped');
+    // Optionally reset objects to initial state if presets/save-load modifies them significantly
+    // For now, 'stopped' mainly resets physics, not necessarily object positions to a default
   }, []);
 
   const handleObjectsCollidedAndMerged = useCallback((absorbedObjectId: string, absorberObjectId: string, absorbedObjectMass: number) => {
@@ -91,6 +96,59 @@ export default function SpacetimeExplorerPage() {
 
   }, [selectedObjectId, toast, objects]);
 
+  const handleSaveState = useCallback(() => {
+    try {
+      const stateToSave: SavedSimulationState = {
+        objects,
+        simulationSpeed,
+        showTrajectories,
+        trajectoryLength,
+        lightingMode,
+        showShadows,
+      };
+      localStorage.setItem(LOCAL_STORAGE_SAVE_KEY, JSON.stringify(stateToSave));
+      toast({ title: "Simulation Saved", description: "Current state saved to local storage." });
+    } catch (error) {
+      console.error("Error saving state:", error);
+      toast({ title: "Save Failed", description: "Could not save simulation state.", variant: "destructive" });
+    }
+  }, [objects, simulationSpeed, showTrajectories, trajectoryLength, lightingMode, showShadows, toast]);
+
+  const handleLoadState = useCallback(() => {
+    try {
+      const savedStateString = localStorage.getItem(LOCAL_STORAGE_SAVE_KEY);
+      if (savedStateString) {
+        const savedState: SavedSimulationState = JSON.parse(savedStateString);
+        setObjects(savedState.objects);
+        setSimulationSpeed(savedState.simulationSpeed);
+        setShowTrajectories(savedState.showTrajectories);
+        setTrajectoryLength(savedState.trajectoryLength);
+        setLightingMode(savedState.lightingMode);
+        setShowShadows(savedState.showShadows);
+        setSimulationStatus('stopped');
+        setSelectedObjectId(null);
+        toast({ title: "Simulation Loaded", description: "Saved state loaded from local storage." });
+      } else {
+        toast({ title: "Load Failed", description: "No saved simulation state found.", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Error loading state:", error);
+      toast({ title: "Load Failed", description: "Could not load simulation state.", variant: "destructive" });
+    }
+  }, [toast]);
+
+  const handleLoadPreset = useCallback((presetKey: string) => {
+    const preset = PRESET_SCENARIOS[presetKey];
+    if (preset) {
+      setObjects(preset.objects.map(obj => ({...obj, id: `${obj.id}_${Date.now()}` }))); // Ensure unique IDs if loaded multiple times
+      setSimulationStatus('stopped');
+      setSelectedObjectId(null);
+      toast({ title: "Preset Loaded", description: `"${preset.name}" scenario is ready.` });
+    } else {
+      toast({ title: "Preset Error", description: "Could not load the selected preset.", variant: "destructive" });
+    }
+  }, [toast]);
+
 
   return (
     <CustomizationProvider>
@@ -121,12 +179,14 @@ export default function SpacetimeExplorerPage() {
               onSetTrajectoryLength={setTrajectoryLength}
               onSetShowShadows={setShowShadows}
               onSetLightingMode={setLightingMode}
+              onSaveState={handleSaveState}
+              onLoadState={handleLoadState}
+              onLoadPreset={handleLoadPreset}
             />
           </SidebarContent>
         </Sidebar>
         <SidebarInset className="flex flex-col h-screen bg-background">
           <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-background z-10">
-            {/* Left side: UI Customizer Trigger */}
             <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon" className="rounded-md border-2 border-primary hover:bg-primary/10 active:bg-primary/20">
@@ -139,12 +199,10 @@ export default function SpacetimeExplorerPage() {
               </SheetContent>
             </Sheet>
 
-            {/* Center: App Title */}
-            <h1 className="text-lg font-semibold text-foreground flex-1 text-center truncate px-2">
+            <h1 className="text-md md:text-lg font-semibold text-foreground flex-1 text-center truncate px-2">
               Spacetime Explorer
             </h1>
 
-            {/* Right side: Main Control Panel Sidebar Trigger */}
             <SidebarTrigger className="rounded-full">
               <Settings />
             </SidebarTrigger>
@@ -152,6 +210,7 @@ export default function SpacetimeExplorerPage() {
           <main className="flex-1 overflow-hidden p-1 md:p-2">
               <SpaceTimeCanvas
                 objects={objects}
+                selectedObjectId={selectedObjectId}
                 simulationStatus={simulationStatus}
                 simulationSpeed={simulationSpeed}
                 onObjectSelected={handleSelectObject} 

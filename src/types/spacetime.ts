@@ -16,17 +16,14 @@ export interface BaseObject {
   radius: number; // For visual representation
   color: string; // Hex color string
   mass: number; // All objects have a mass, can be 0 for tracer/massless particles
-  textureUrl?: string; // Optional URL for object texture
 }
 
 export interface MassiveObject extends BaseObject {
   type: 'massive';
-  // Mass is inherited. MassiveObjects typically have a larger default mass.
 }
 
 export interface OrbiterObject extends BaseObject {
   type: 'orbiter';
-  // Mass is inherited. OrbiterObjects typically have a smaller default mass, or 0 for tracers.
 }
 
 export type SceneObject = MassiveObject | OrbiterObject;
@@ -37,10 +34,14 @@ export interface SimulationConfig {
   trajectoryLength: number;
 }
 
-export interface AISuggestion {
-  suggestedMass: number;
-  suggestedVelocity: number;
-  explanation: string;
-}
-
 export type LightingMode = "Realistic Solar" | "Ambient Glow" | "Dramatic Edge";
+
+export interface SavedSimulationState {
+  objects: SceneObject[];
+  simulationSpeed: number;
+  showTrajectories: boolean;
+  trajectoryLength: number;
+  lightingMode: LightingMode;
+  showShadows: boolean;
+  // Future: camera position, selected object ID, etc.
+}

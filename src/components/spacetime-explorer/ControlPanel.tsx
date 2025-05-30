@@ -10,15 +10,14 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass } from 'lucide-react';
+import { PlusCircle, Trash2, Play, Pause, SkipForward, Settings2, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass, SaveIcon, BookOpenCheck, FolderOpen } from 'lucide-react';
 import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, Vector3, MassiveObject, LightingMode } from '@/types/spacetime';
-// Removed: import SpacecraftDesigner2D from './SpacecraftDesigner2D';
+import { PRESET_SCENARIOS } from '@/lib/preset-scenarios';
 
 import { useToast } from '@/hooks/use-toast';
 import {
-  MIN_SIMULATION_SPEED, MAX_SIMULATION_SPEED, DEFAULT_SIMULATION_SPEED,
+  MIN_SIMULATION_SPEED, MAX_SIMULATION_SPEED,
   DEFAULT_TRAJECTORY_LENGTH, DEFAULT_ORBITER_OBJECT_RADIUS,
   G_CONSTANT, DEFAULT_ORBITAL_DISTANCE_OFFSET, DEFAULT_MASSIVE_OBJECT_RADIUS,
   DEFAULT_MASSIVE_OBJECT_COLOR, DEFAULT_ORBITER_OBJECT_COLOR
@@ -48,6 +47,9 @@ interface ControlPanelProps {
   onSetTrajectoryLength: (length: number) => void;
   onSetShowShadows: (show: boolean) => void;
   onSetLightingMode: (mode: LightingMode) => void;
+  onSaveState: () => void;
+  onLoadState: () => void;
+  onLoadPreset: (presetKey: string) => void;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = (props) => {
@@ -166,7 +168,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
          }
       }
 
-
       if (centralBody) {
         const actualCentralBodyRadius = centralBody.radius || DEFAULT_MASSIVE_OBJECT_RADIUS;
         const actualOrbiterRadius = definition.radius; 
@@ -216,7 +217,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         velocity = definition.baseVelocity || {x:0,y:0,z:0}; 
     }
 
-
     const newObject: SceneObject = {
       ...definition, 
       id: newId,
@@ -233,7 +233,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     toast({ title: "Real Object Added", description: `${definition.name} added to the scene.` });
   };
 
-
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground rounded-lg shadow-lg overflow-hidden">
       <div className="p-4">
@@ -241,7 +240,7 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         <Separator className="mb-4 bg-sidebar-border" />
       </div>
       <ScrollArea className="flex-grow p-4 pt-0">
-        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-4', 'item-5']} className="w-full">
+        <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-5', 'item-4', 'item-save-load', 'item-presets']} className="w-full">
 
           <AccordionItem value="item-1" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
@@ -350,6 +349,49 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               )}
             </AccordionContent>
           </AccordionItem>
+          
+          <AccordionItem value="item-presets" className="border-b-0">
+            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
+              <BookOpenCheck className="mr-2 h-5 w-5" /> Preset Scenarios
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 space-y-2">
+              {Object.entries(PRESET_SCENARIOS).map(([key, scenario]) => (
+                <Button
+                  key={key}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => props.onLoadPreset(key)}
+                  className="w-full border-sidebar-primary text-sidebar-primary hover:bg-sidebar-primary/10 flex-col items-start h-auto py-2"
+                >
+                  <span className="font-semibold">{scenario.name}</span>
+                  <span className="text-xs text-sidebar-muted-foreground">{scenario.description}</span>
+                </Button>
+              ))}
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="item-save-load" className="border-b-0">
+            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
+              <SaveIcon className="mr-2 h-5 w-5" /> Save/Load Simulation
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 space-y-2">
+              <Button
+                size="sm"
+                onClick={props.onSaveState}
+                className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground"
+              >
+                <SaveIcon className="mr-2 h-4 w-4" /> Save Current State
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={props.onLoadState}
+                className="w-full border-sidebar-primary text-sidebar-primary hover:bg-sidebar-primary/10"
+              >
+                <FolderOpen className="mr-2 h-4 w-4" /> Load Saved State
+              </Button>
+            </AccordionContent>
+          </AccordionItem>
 
           <AccordionItem value="item-5" className="border-b-0">
             <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
@@ -412,33 +454,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
                 </Button>
             </AccordionContent>
           </AccordionItem>
-          
-          {/* Removed Spacecraft Design Accordion Item
-          <AccordionItem value="item-6" className="border-b-0">
-            <AccordionTrigger className="hover:no-underline py-3 text-sidebar-foreground">
-              <DraftingCompass className="mr-2 h-5 w-5" /> Spacecraft Design
-            </AccordionTrigger>
-            <AccordionContent className="pt-2">
-               <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full border-sidebar-primary text-sidebar-primary hover:bg-sidebar-primary/10">
-                    <Rocket className="mr-2 h-4 w-4" /> Open Spacecraft Designer
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-full sm:max-w-md md:max-w-lg lg:max-w-2xl xl:max-w-3xl p-0 overflow-y-auto">
-                  <SheetHeader className="p-4 border-b bg-card">
-                    <SheetTitle>Spacecraft Designer</SheetTitle>
-                  </SheetHeader>
-                  <div className="h-[calc(100%-var(--sheet-header-height,60px))]"> 
-                     {/* <SpacecraftDesigner2D /> Removed import and usage }
-                     <p className="p-4 text-center text-sidebar-muted-foreground">Spacecraft Designer is being developed.</p>
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </AccordionContent>
-          </AccordionItem>
-          */}
-
         </Accordion>
       </ScrollArea>
     </div>
@@ -446,4 +461,3 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
 };
 
 export default ControlPanel;
-
