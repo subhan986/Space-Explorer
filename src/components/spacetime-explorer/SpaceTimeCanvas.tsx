@@ -73,10 +73,17 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   const simulationObjectsRef = useRef<Map<string, SimulationObjectInternal>>(new Map());
   const gridPlaneRef = useRef<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null>(null);
   const animationFrameIdRef = useRef<number>();
-  const textureLoaderRef = useRef<THREE.TextureLoader | null>(null);
-
-
+  
   const [forceDisplayData, setForceDisplayData] = useState<{ id: string; name: string; force: number | undefined }[]>([]);
+
+  // Refs for camera zoom animation
+  const isZoomingRef = useRef(false);
+  const zoomTargetPositionRef = useRef(new THREE.Vector3());
+  const zoomTargetLookAtRef = useRef(new THREE.Vector3());
+  const zoomToObjectRadiusRef = useRef(1); // Store radius of target for zoom distance calculation
+
+  const raycasterRef = useRef(new THREE.Raycaster());
+  const mouseRef = useRef(new THREE.Vector2());
 
   const isValidVector = useCallback((v: {x:number, y:number, z:number} | undefined): v is {x:number, y:number, z:number} => {
     return !!v && isFinite(v.x) && isFinite(v.y) && isFinite(v.z);
@@ -271,7 +278,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     if (!originalPositions) return;
 
     const vertex = new THREE.Vector3();
-    const maxDisplacement = 200;
+    const maxDisplacement = 200; 
 
     if (objectsWithMassForGrid.length === 0) {
       for (let i = 0; i < positions.count; i++) {
@@ -297,7 +304,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           const wellStrength = mo.mass * 0.1;
           const falloffFactor = Math.max(Math.pow(mo.radius * 7, 2), 200);
 
-
           const displacement = -wellStrength * Math.exp(-safeDistanceOnPlaneSq / falloffFactor);
           if (isFinite(displacement)) {
               totalDisplacement += displacement;
@@ -314,12 +320,13 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   useEffect(() => {
     if (!mountRef.current) return;
     const currentMount = mountRef.current;
-    textureLoaderRef.current = new THREE.TextureLoader();
+    const textureLoader = new THREE.TextureLoader();
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     const initialBgColor = new THREE.Color(0x0A0A1A); 
     scene.fog = new THREE.Fog(0x050510, 7000, 25000);
+
 
     const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 50000);
     cameraRef.current = camera;
@@ -380,8 +387,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     }
 
     const loadStaticBackground = () => {
-      if (!textureLoaderRef.current || !sceneRef.current) return;
-      textureLoaderRef.current.load(
+      textureLoader.load(
         '/space_background.jpg', 
         (texture) => {
           texture.mapping = THREE.EquirectangularReflectionMapping;
@@ -398,6 +404,45 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       );
     };
     loadStaticBackground();
+
+
+    const handleDoubleClick = (event: MouseEvent) => {
+      if (!cameraRef.current || !sceneRef.current || !selectedObjectId || !mountRef.current) return;
+    
+      const rect = mountRef.current.getBoundingClientRect();
+      mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+      raycasterRef.current.setFromCamera(mouseRef.current, cameraRef.current);
+      const intersects = raycasterRef.current.intersectObjects(Array.from(objectsMapRef.current.values()).map(obj => obj.mainMesh), false);
+    
+      if (intersects.length > 0) {
+        const clickedObjectMesh = intersects[0].object as THREE.Mesh;
+        const clickedObjectId = clickedObjectMesh.name; // Assuming mesh name is the object ID
+    
+        if (clickedObjectId === selectedObjectId) {
+          const simObj = simulationObjectsRef.current.get(selectedObjectId);
+          if (simObj && isValidVector(simObj.threePosition)) {
+            isZoomingRef.current = true;
+            zoomTargetLookAtRef.current.copy(simObj.threePosition);
+            zoomToObjectRadiusRef.current = simObj.radius;
+            
+            // Calculate target camera position: maintain direction, move closer
+            const direction = new THREE.Vector3();
+            cameraRef.current.getWorldDirection(direction); // Get current camera view direction
+            const distance = Math.max(simObj.radius * 3, 50); // Zoom distance based on radius, min 50 units
+            
+            // Target position is object's position minus direction vector scaled by distance
+            // This places camera in front of object, looking at it.
+            // To place it *behind* the object relative to world origin (or current view):
+            const offsetDirection = cameraRef.current.position.clone().sub(simObj.threePosition).normalize();
+            zoomTargetPositionRef.current.copy(simObj.threePosition).add(offsetDirection.multiplyScalar(distance));
+          }
+        }
+      }
+    };
+
+    currentMount.addEventListener('dblclick', handleDoubleClick);
 
 
     const resizeObserver = new ResizeObserver(() => {
@@ -419,9 +464,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
 
     return () => {
+      currentMount.removeEventListener('dblclick', handleDoubleClick);
       resizeObserver.unobserve(currentMount);
       if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current);
-      if (currentMount && rendererRef.current?.domElement) currentMount.removeChild(rendererRef.current.domElement);
+      if (currentMount && rendererRef.current?.domElement && currentMount.contains(rendererRef.current.domElement)) currentMount.removeChild(rendererRef.current.domElement);
       if (currentMount && labelRendererRef.current?.domElement && currentMount.contains(labelRendererRef.current.domElement)) {
           currentMount.removeChild(labelRendererRef.current.domElement);
       }
@@ -442,7 +488,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           if (mappedObj.accretionDiskMesh.material instanceof THREE.Material) mappedObj.accretionDiskMesh.material.dispose();
         }
         if (mappedObj.nameLabel) {
-            mappedObj.mainMesh.remove(mappedObj.nameLabel); // CSS2DObject removed from mesh
+            mappedObj.mainMesh.remove(mappedObj.nameLabel); 
         }
       });
       trajectoriesRef.current.forEach(line => {
@@ -524,14 +570,24 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     const animate = (timestamp: number) => {
         animationFrameIdRef.current = requestAnimationFrame(animate);
         
-        if (controlsRef.current && selectedObjectId) {
+        if (isZoomingRef.current && controlsRef.current && cameraRef.current) {
+          const lerpFactor = 0.07;
+          cameraRef.current.position.lerp(zoomTargetPositionRef.current, lerpFactor);
+          controlsRef.current.target.lerp(zoomTargetLookAtRef.current, lerpFactor);
+    
+          if (cameraRef.current.position.distanceTo(zoomTargetPositionRef.current) < zoomToObjectRadiusRef.current * 0.1  || 
+              cameraRef.current.position.distanceTo(zoomTargetPositionRef.current) < 1 ) { //
+            isZoomingRef.current = false;
+            cameraRef.current.position.copy(zoomTargetPositionRef.current); // Snap to final
+            controlsRef.current.target.copy(zoomTargetLookAtRef.current); // Snap to final
+          }
+        } else if (controlsRef.current && selectedObjectId && !isZoomingRef.current) {
           const selectedSimObj = simulationObjectsRef.current.get(selectedObjectId);
           if (selectedSimObj && isValidVector(selectedSimObj.threePosition)) {
-            controlsRef.current.target.copy(selectedSimObj.threePosition);
+            controlsRef.current.target.lerp(selectedSimObj.threePosition, 0.1); // Smoothly follow
           }
         }
         controls.update();
-
 
         if (simulationStatus === 'running') {
             const deltaTime = lastTimestamp > 0 ? (timestamp - lastTimestamp) / 1000 : 1/60; 
@@ -654,12 +710,11 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         
         const newMappedObject: MappedObject = { mainMesh: threeMesh, objectName: objData.name };
 
-        // Add Name Label
         const labelDiv = document.createElement('div');
         labelDiv.className = 'object-name-label';
         labelDiv.textContent = simObj.name;
         const nameLabel = new CSS2DObject(labelDiv);
-        nameLabel.position.set(0, simObj.radius * 1.5 + 5, 0); // Position above sphere, +5 for extra clearance
+        nameLabel.position.set(0, simObj.radius * 1.5 + 5, 0); 
         threeMesh.add(nameLabel);
         newMappedObject.nameLabel = nameLabel;
 
@@ -703,7 +758,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
            threeMesh.geometry = new THREE.SphereGeometry(simObj.radius, 32, 32);
            visualReset = true;
 
-           if (mappedObj.nameLabel) { // Adjust label position if radius changes
+           if (mappedObj.nameLabel) { 
                 mappedObj.nameLabel.position.set(0, simObj.radius * 1.5 + 5, 0);
            }
 
@@ -769,7 +824,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                     side: THREE.DoubleSide, 
                     transparent: true, 
                     opacity: 0.7, 
-                    blending: THREE.AdditiveBlending
+                    blending: THREE.AdditiveBlending 
                 });
                 const accretionDiskMesh = new THREE.Mesh(diskGeometry, diskMaterial);
                 accretionDiskMesh.rotation.x = Math.PI / 2;
@@ -820,7 +875,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       if (!currentPropIds.has(id)) {
         const mappedObjToRemove = objectsMapRef.current.get(id);
         if (mappedObjToRemove) {
-          if (mappedObjToRemove.nameLabel) mappedObjToRemove.mainMesh.remove(mappedObjToRemove.nameLabel); // Remove label from mesh
+          if (mappedObjToRemove.nameLabel) mappedObjToRemove.mainMesh.remove(mappedObjToRemove.nameLabel); 
           scene.remove(mappedObjToRemove.mainMesh); 
           mappedObjToRemove.mainMesh.geometry.dispose();
           const oldMaterial = mappedObjToRemove.mainMesh.material as THREE.MeshStandardMaterial;
@@ -855,6 +910,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
   useEffect(() => {
     if (simulationStatus === 'stopped') {
+      isZoomingRef.current = false; // Stop any active zoom animation when simulation stops
       trajectoriesRef.current.forEach((line) => {
         if (line.parent) sceneRef.current?.remove(line);
         line.geometry.dispose();
@@ -888,7 +944,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             threeMesh.geometry.dispose();
             threeMesh.geometry = new THREE.SphereGeometry(propRadius, 32, 32);
           }
-          if (mappedObj.nameLabel) { // Update label position on radius change
+          if (mappedObj.nameLabel) { 
             mappedObj.nameLabel.position.set(0, propRadius * 1.5 + 5, 0);
             if (mappedObj.nameLabel.element.textContent !== objData.name) {
                  mappedObj.nameLabel.element.textContent = objData.name;
@@ -1000,3 +1056,5 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
+
+    
