@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { useCustomization } from "@/contexts/CustomizationContext";
 import { HexColorPicker } from "react-colorful";
 import React from "react";
@@ -25,11 +26,10 @@ const ThemeColorControl: React.FC<ThemeColorControlProps> = ({ label, colorKey }
     const numValue = parseInt(value, 10);
     if (!isNaN(numValue)) {
       updateThemeColorValue(colorKey, component, numValue);
-    } else if (value === "") { // Allow clearing input, treat as 0 or default
+    } else if (value === "") {
       updateThemeColorValue(colorKey, component, 0);
     }
   };
-
 
   return (
     <div className="space-y-2 p-3 border border-border rounded-lg shadow-sm bg-card">
@@ -66,13 +66,18 @@ const ThemeColorControl: React.FC<ThemeColorControlProps> = ({ label, colorKey }
             value={color.l}
             onChange={(e) => handleInputChange('l', e.target.value)}
             className="w-full h-9 text-sm p-2"
+            // Note: Lightness might be overridden by Light/Dark mode for some colors like background/foreground
           />
         </div>
       </div>
        <div 
         className="w-full h-8 rounded-md border border-border mt-2" 
-        style={{ backgroundColor: `hsl(${color.h}, ${color.s}%, ${color.l}%)`}}
-        title={`hsl(${color.h}, ${color.s}%, ${color.l}%)`}
+        style={{ 
+          backgroundColor: settings.themeMode === 'light' && (colorKey === 'themeBackground' || colorKey === 'themeForeground')
+            ? `hsl(${color.h}, ${color.s}%, ${colorKey === 'themeBackground' ? 92 : 10}%)`
+            : `hsl(${color.h}, ${color.s}%, ${color.l}%)`
+        }}
+        title={`Base: hsl(${color.h}, ${color.s}%, ${color.l}%)`}
       />
     </div>
   );
@@ -86,12 +91,32 @@ export default function UICustomizer() {
       <SheetHeader className="p-4 border-b bg-card sticky top-0 z-10">
         <SheetTitle className="text-card-foreground">UI Customizer</SheetTitle>
         <SheetDescription className="text-muted-foreground">
-          Adjust the look and feel. Changes are saved locally.
+          Adjust the look and feel. Changes are live and saved locally.
         </SheetDescription>
       </SheetHeader>
       <div className="p-4 space-y-6 flex-1 overflow-y-auto bg-background text-foreground">
         <section>
-          <h3 className="text-xl font-semibold mb-4">Theme Colors</h3>
+          <h3 className="text-xl font-semibold mb-3">Appearance Mode</h3>
+           <div className="p-3 border border-border rounded-lg shadow-sm bg-card space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="light-mode-switch" className="text-base text-card-foreground">
+                Enable Light Mode
+              </Label>
+              <Switch
+                id="light-mode-switch"
+                checked={settings.themeMode === 'light'}
+                onCheckedChange={(checked) => updateSetting('themeMode', checked ? 'light' : 'dark')}
+                className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+              />
+            </div>
+          </div>
+        </section>
+        <Separator/>
+        <section>
+          <h3 className="text-xl font-semibold mb-3">Theme Colors (Base)</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Customize base Hue, Saturation, and Lightness. Lightness for Background/Foreground is primarily controlled by Appearance Mode.
+          </p>
           <div className="space-y-4">
             <ThemeColorControl label="Background" colorKey="themeBackground" />
             <ThemeColorControl label="Foreground" colorKey="themeForeground" />
