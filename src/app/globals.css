@@ -71,3 +71,16 @@ body {
   }
 }
 
+.object-name-label {
+  color: white;
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+  font-size: 12px;
+  padding: 2px 5px;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+  text-shadow: 0 0 4px black;
+  white-space: nowrap;
+  transform: translate(-50%, -100%); /* Position above and centered */
+  pointer-events: none;
+  user-select: none;
+}

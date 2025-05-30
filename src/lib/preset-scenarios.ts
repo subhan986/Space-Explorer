@@ -1,7 +1,15 @@
 
 // src/lib/preset-scenarios.ts
 import type { SceneObject } from '@/types/spacetime';
-import { G_CONSTANT, DEFAULT_MASSIVE_OBJECT_RADIUS, DEFAULT_ORBITER_OBJECT_RADIUS, DEFAULT_ORBITAL_DISTANCE_OFFSET } from './constants';
+import { REAL_OBJECT_DEFINITIONS } from './real-objects';
+import {
+  G_CONSTANT,
+  SUN_SIMULATION_MASS,
+  MERCURY_ORBIT_RADIUS, VENUS_ORBIT_RADIUS, EARTH_ORBIT_RADIUS,
+  MARS_ORBIT_RADIUS, JUPITER_ORBIT_RADIUS, SATURN_ORBIT_RADIUS,
+  URANUS_ORBIT_RADIUS, NEPTUNE_ORBIT_RADIUS,
+  MOON_ORBIT_RADIUS_AROUND_EARTH
+} from './constants';
 
 // Helper to calculate orbital velocity
 const calculateOrbitalVelocity = (centralMass: number, distance: number): number => {
@@ -10,55 +18,101 @@ const calculateOrbitalVelocity = (centralMass: number, distance: number): number
   return isFinite(speed) ? speed : 0;
 };
 
+const getPlanetWithOrbit = (
+  planetKey: keyof typeof REAL_OBJECT_DEFINITIONS,
+  orbitalRadius: number,
+  centralMass: number,
+  angleDegrees: number // Initial angle in degrees
+): SceneObject => {
+  const planetDef = REAL_OBJECT_DEFINITIONS[planetKey];
+  if (!planetDef) throw new Error(`Planet definition not found for ${planetKey}`);
+
+  const angleRadians = angleDegrees * (Math.PI / 180);
+  const positionX = orbitalRadius * Math.cos(angleRadians);
+  const positionZ = orbitalRadius * Math.sin(angleRadians); // Orbit in XZ plane
+
+  const velocityMagnitude = calculateOrbitalVelocity(centralMass, orbitalRadius);
+  // Velocity perpendicular to the position vector for circular orbit in XZ plane
+  const velocityX = -velocityMagnitude * Math.sin(angleRadians);
+  const velocityZ = velocityMagnitude * Math.cos(angleRadians);
+
+  return {
+    id: `preset_${planetDef.name.toLowerCase().replace(/\s+/g, '')}`,
+    type: planetDef.type,
+    name: planetDef.name,
+    mass: planetDef.mass,
+    radius: planetDef.radius,
+    color: planetDef.color,
+    position: { x: positionX, y: 0, z: positionZ },
+    velocity: { x: velocityX, y: 0, z: velocityZ },
+  };
+};
+
+
 export const PRESET_SCENARIOS: Record<string, { name: string; description: string; objects: SceneObject[] }> = {
-  simpleSolarSystem: {
-    name: "Simple Solar System",
-    description: "A central star with two planets in basic orbits.",
-    objects: [
-      { 
-        id: 'preset_sun1', type: 'massive', name: 'Solara', mass: 100000, 
-        radius: 30, color: '#FFD700', 
-        position: { x: 0, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: 0 } 
-      },
-      (() => {
-        const centralMass = 100000;
-        const planetRadius = 8;
-        const sunRadius = 30;
-        const distance = sunRadius + planetRadius + DEFAULT_ORBITAL_DISTANCE_OFFSET + 150; // 30 + 8 + 50 + 150 = 238
-        const velocityZ = calculateOrbitalVelocity(centralMass, distance);
-        return { 
-          id: 'preset_planet1', type: 'orbiter', name: 'Planet A', mass: 300, 
-          radius: planetRadius, color: '#4169E1', 
-          position: { x: distance, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: velocityZ } 
+  realSolarSystem: {
+    name: "Real Solar System",
+    description: "The Sun, 8 planets, and Earth's Moon in approximate orbits.",
+    objects: (() => {
+      const sun = {
+        ...REAL_OBJECT_DEFINITIONS.SUN,
+        id: 'preset_sun_rss',
+        position: { x: 0, y: 0, z: 0 },
+        velocity: { x: 0, y: 0, z: 0 },
+      } as SceneObject;
+
+      const planets: SceneObject[] = [
+        getPlanetWithOrbit('MERCURY', MERCURY_ORBIT_RADIUS, SUN_SIMULATION_MASS, 0),
+        getPlanetWithOrbit('VENUS', VENUS_ORBIT_RADIUS, SUN_SIMULATION_MASS, 45),
+        getPlanetWithOrbit('EARTH', EARTH_ORBIT_RADIUS, SUN_SIMULATION_MASS, 90),
+        getPlanetWithOrbit('MARS', MARS_ORBIT_RADIUS, SUN_SIMULATION_MASS, 135),
+        getPlanetWithOrbit('JUPITER', JUPITER_ORBIT_RADIUS, SUN_SIMULATION_MASS, 180),
+        getPlanetWithOrbit('SATURN', SATURN_ORBIT_RADIUS, SUN_SIMULATION_MASS, 225),
+        getPlanetWithOrbit('URANUS', URANUS_ORBIT_RADIUS, SUN_SIMULATION_MASS, 270),
+        getPlanetWithOrbit('NEPTUNE', NEPTUNE_ORBIT_RADIUS, SUN_SIMULATION_MASS, 315),
+      ];
+
+      const earth = planets.find(p => p.name === 'Earth');
+      let moon: SceneObject | null = null;
+      if (earth) {
+        const moonDef = REAL_OBJECT_DEFINITIONS.MOON;
+        const moonOrbitalVelocity = calculateOrbitalVelocity(earth.mass, MOON_ORBIT_RADIUS_AROUND_EARTH);
+        moon = {
+          id: 'preset_moon_rss',
+          type: moonDef.type,
+          name: moonDef.name,
+          mass: moonDef.mass,
+          radius: moonDef.radius,
+          color: moonDef.color,
+          position: {
+            x: earth.position.x + MOON_ORBIT_RADIUS_AROUND_EARTH,
+            y: earth.position.y, // Keep moon in the same Y plane as Earth for simplicity
+            z: earth.position.z,
+          },
+          velocity: {
+            x: earth.velocity.x,
+            y: earth.velocity.y,
+            z: earth.velocity.z + moonOrbitalVelocity, // Orbiting Earth in its XZ plane
+          },
         };
-      })(),
-      (() => {
-        const centralMass = 100000;
-        const planetRadius = 4;
-        const sunRadius = 30;
-        const distance = sunRadius + planetRadius + DEFAULT_ORBITAL_DISTANCE_OFFSET + 300; // 30 + 4 + 50 + 300 = 384
-        const velocityZ = calculateOrbitalVelocity(centralMass, distance);
-        return { 
-          id: 'preset_planet2', type: 'orbiter', name: 'Planet B', mass: 50, 
-          radius: planetRadius, color: '#808080', 
-          position: { x: -distance, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: -velocityZ } 
-        };
-      })(),
-    ]
+      }
+
+      return [sun, ...planets, ...(moon ? [moon] : [])];
+    })(),
   },
   binaryPair: {
     name: "Binary Pair",
     description: "Two stars orbiting their common center of mass.",
     objects: [
-      { 
-        id: 'preset_starA', type: 'massive', name: 'Star Alpha', mass: 80000, 
-        radius: 25, color: '#FF8C00', // DarkOrange
-        position: { x: -150, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: 13 } // Approximate for stability
+      {
+        id: 'preset_starA', type: 'massive', name: 'Star Alpha', mass: 80000,
+        radius: 25, color: '#FF8C00',
+        position: { x: -150, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: 13 }
       },
-      { 
-        id: 'preset_starB', type: 'massive', name: 'Star Beta', mass: 60000, 
-        radius: 20, color: '#ADD8E6', // LightBlue
-        position: { x: 200, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: -10 } // Approximate for stability
+      {
+        id: 'preset_starB', type: 'massive', name: 'Star Beta', mass: 60000,
+        radius: 20, color: '#ADD8E6',
+        position: { x: 200, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: -10 }
       }
     ]
   },
@@ -66,15 +120,15 @@ export const PRESET_SCENARIOS: Record<string, { name: string; description: strin
     name: "Comet Slingshot",
     description: "A comet passing by a massive star for a gravitational assist.",
     objects: [
-        { 
-            id: 'preset_heavyStar', type: 'massive', name: 'Graviton Prime', mass: 200000, 
-            radius: 40, color: '#DC143C', // Crimson
-            position: { x: 0, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: 0 } 
+        {
+            id: 'preset_heavyStar', type: 'massive', name: 'Graviton Prime', mass: 200000,
+            radius: 40, color: '#DC143C',
+            position: { x: 0, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: 0 }
         },
-        { 
-            id: 'preset_comet', type: 'orbiter', name: 'Icarus Comet', mass: 1, 
-            radius: 2, color: '#E0FFFF', // LightCyan
-            position: { x: 800, y: 0, z: -800 }, velocity: { x: -15, y: 0, z: 5 } 
+        {
+            id: 'preset_comet', type: 'orbiter', name: 'Icarus Comet', mass: 1,
+            radius: 2, color: '#E0FFFF',
+            position: { x: 800, y: 0, z: -800 }, velocity: { x: -15, y: 0, z: 5 }
         },
     ]
   }
