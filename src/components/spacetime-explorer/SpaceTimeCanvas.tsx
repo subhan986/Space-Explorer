@@ -432,9 +432,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             cameraRef.current.getWorldDirection(direction); // Get current camera view direction
             const distance = Math.max(simObj.radius * 3, 50); // Zoom distance based on radius, min 50 units
             
-            // Target position is object's position minus direction vector scaled by distance
-            // This places camera in front of object, looking at it.
-            // To place it *behind* the object relative to world origin (or current view):
             const offsetDirection = cameraRef.current.position.clone().sub(simObj.threePosition).normalize();
             zoomTargetPositionRef.current.copy(simObj.threePosition).add(offsetDirection.multiplyScalar(distance));
           }
@@ -576,23 +573,26 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           controlsRef.current.target.lerp(zoomTargetLookAtRef.current, lerpFactor);
     
           if (cameraRef.current.position.distanceTo(zoomTargetPositionRef.current) < zoomToObjectRadiusRef.current * 0.1  || 
-              cameraRef.current.position.distanceTo(zoomTargetPositionRef.current) < 1 ) { //
+              cameraRef.current.position.distanceTo(zoomTargetPositionRef.current) < 1 ) { 
             isZoomingRef.current = false;
-            cameraRef.current.position.copy(zoomTargetPositionRef.current); // Snap to final
-            controlsRef.current.target.copy(zoomTargetLookAtRef.current); // Snap to final
+            cameraRef.current.position.copy(zoomTargetPositionRef.current); 
+            controlsRef.current.target.copy(zoomTargetLookAtRef.current); 
           }
         } else if (controlsRef.current && selectedObjectId && !isZoomingRef.current) {
           const selectedSimObj = simulationObjectsRef.current.get(selectedObjectId);
           if (selectedSimObj && isValidVector(selectedSimObj.threePosition)) {
-            controlsRef.current.target.lerp(selectedSimObj.threePosition, 0.1); // Smoothly follow
+            controlsRef.current.target.lerp(selectedSimObj.threePosition, 0.1); 
           }
         }
         controls.update();
 
         if (simulationStatus === 'running') {
-            const deltaTime = lastTimestamp > 0 ? (timestamp - lastTimestamp) / 1000 : 1/60; 
+            const rawDeltaTime = lastTimestamp > 0 ? (timestamp - lastTimestamp) / 1000 : 1/60;
             lastTimestamp = timestamp;
-            const dt = simulationSpeed * deltaTime; 
+            // Cap the effective deltaTime for physics to prevent instability from large jumps
+            const effectiveDeltaTime = Math.min(rawDeltaTime, 1/30); // Max step of ~33ms (30 FPS)
+            const dt = simulationSpeed * effectiveDeltaTime;
+            
             updatePhysics(dt);
             updateTrajectories();
             deformGrid();
@@ -1056,5 +1056,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
+
+    
 
     
