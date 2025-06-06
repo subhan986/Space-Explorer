@@ -322,40 +322,43 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     const controls = controlsRef.current;
     const moveDistance = cameraMoveSpeed * deltaTime * simulationSpeed; 
 
+    const cameraOriginalPosition = camera.position.clone();
+    let movedByKeyboard = false;
+
     const forward = new THREE.Vector3();
     camera.getWorldDirection(forward);
     const right = new THREE.Vector3().crossVectors(camera.up, forward).normalize(); 
 
-    let moved = false;
-
     if (keysPressedRef.current['w']) {
       camera.position.addScaledVector(forward, moveDistance);
-      moved = true;
+      movedByKeyboard = true;
     }
     if (keysPressedRef.current['s']) {
       camera.position.addScaledVector(forward, -moveDistance);
-      moved = true;
+      movedByKeyboard = true;
     }
     if (keysPressedRef.current['a']) {
       camera.position.addScaledVector(right.clone().negate(), moveDistance);
-      moved = true;
+      movedByKeyboard = true;
     }
     if (keysPressedRef.current['d']) {
       camera.position.addScaledVector(right, moveDistance);
-      moved = true;
+      movedByKeyboard = true;
     }
     if (keysPressedRef.current['q']) { 
       camera.position.y += moveDistance;
-      moved = true;
+      movedByKeyboard = true;
     }
     if (keysPressedRef.current['e']) { 
       camera.position.y -= moveDistance;
-      moved = true;
+      movedByKeyboard = true;
     }
 
-    if (moved) {
-      controls.target.copy(camera.position).addScaledVector(forward, 10); 
-      if (isZoomingRef.current) { // If keyboard movement happens, stop any active zoom
+    if (movedByKeyboard) {
+      const actualDeltaMovement = camera.position.clone().sub(cameraOriginalPosition);
+      controls.target.add(actualDeltaMovement); 
+
+      if (isZoomingRef.current) {
         isZoomingRef.current = false;
       }
     }
@@ -904,6 +907,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 diskMaterial.color.set(0xFFE066); 
                 diskMaterial.opacity = 0.7; 
                 diskMaterial.blending = THREE.AdditiveBlending;
+                diskMaterial.castShadow = false; // Ensure these are set
+                diskMaterial.receiveShadow = false;
                 diskMaterial.needsUpdate = true; 
             }
         } else { 
@@ -1032,7 +1037,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 material.roughness = 0.8;
                 threeMesh.castShadow = false;
                 threeMesh.receiveShadow = false;
-            } else if (objData.name === "Earth" || objData.name === "Moon" || objData.name === "Jupiter" || objData.name === "Ceres" || objData.name === "Mercury" || objData.name === "Venus" || objData.name === "Mars" || objData.name === "Saturn" || objData.name === "Uranus" || objData.name === "Neptune") { // Corrected simObj.name to objData.name here
+            } else if (objData.name === "Earth" || objData.name === "Moon" || objData.name === "Jupiter" || objData.name === "Ceres" || objData.name === "Mercury" || objData.name === "Venus" || objData.name === "Mars" || objData.name === "Saturn" || objData.name === "Uranus" || objData.name === "Neptune") { 
                 material.metalness = 0.1;
                 material.roughness = 0.7;
                 material.emissive?.set(0x000000);
