@@ -355,6 +355,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     if (moved) {
       controls.target.copy(camera.position).addScaledVector(forward, 10); 
+      if (isZoomingRef.current) { // If keyboard movement happens, stop any active zoom
+        isZoomingRef.current = false;
+      }
     }
   }, [simulationSpeed]);
 
@@ -643,6 +646,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           }
         } else if (controlsRef.current && selectedObjectId && !isZoomingRef.current) {
           const selectedSimObj = simulationObjectsRef.current.get(selectedObjectId);
+          // Only auto-follow if no WASDQE keys are pressed, allowing keyboard movement to take precedence
           if (selectedSimObj && isValidVector(selectedSimObj.threePosition) && !Object.values(keysPressedRef.current).some(pressed => pressed)) { 
             controlsRef.current.target.lerp(selectedSimObj.threePosition, 0.1); 
           }
@@ -1028,7 +1032,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 material.roughness = 0.8;
                 threeMesh.castShadow = false;
                 threeMesh.receiveShadow = false;
-            } else if (objData.name === "Earth" || objData.name === "Moon" || objData.name === "Jupiter" || objData.name === "Ceres" || objData.name === "Mercury" || objData.name === "Venus" || objData.name === "Mars" || objData.name === "Saturn" || objData.name === "Uranus" || objData.name === "Neptune") {
+            } else if (objData.name === "Earth" || objData.name === "Moon" || objData.name === "Jupiter" || objData.name === "Ceres" || objData.name === "Mercury" || objData.name === "Venus" || objData.name === "Mars" || objData.name === "Saturn" || objData.name === "Uranus" || objData.name === "Neptune") { // Corrected simObj.name to objData.name here
                 material.metalness = 0.1;
                 material.roughness = 0.7;
                 material.emissive?.set(0x000000);
@@ -1106,3 +1110,4 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
+
