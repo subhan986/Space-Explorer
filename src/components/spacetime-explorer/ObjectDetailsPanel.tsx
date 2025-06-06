@@ -3,15 +3,14 @@
 'use client';
 
 import React from 'react';
-import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent } from '@/components/ui/sheet'; // SheetClose removed
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { SceneObject } from '@/types/spacetime';
-import { REAL_OBJECT_DEFINITIONS } from '@/lib/real-objects';
+import { REAL_OBJECT_DEFINITIONS, CompositionComponent } from '@/lib/real-objects'; // CompositionComponent imported
 import { 
-  Orbit, Thermometer, Atom, Ruler, Sigma, FileText, Scale, Gauge, RotateCw, Move, Layers, Blend, Paintbrush, CircleIcon, XIcon
-} from 'lucide-react';
+  Orbit, Thermometer, Atom, Ruler, Sigma, FileText, Scale, Gauge, RotateCw, Move, Layers, Blend, Paintbrush, CircleIcon, ChevronDown
+} from 'lucide-react'; // ChevronDown imported
 
 interface ObjectDetailsPanelProps {
   selectedObject: SceneObject | null | undefined;
@@ -38,14 +37,34 @@ const DetailRow: React.FC<DetailRowProps> = ({ icon, label, value, unit }) => (
   </div>
 );
 
+const CompositionRow: React.FC<{ component: CompositionComponent }> = ({ component }) => (
+  <div className="flex items-center justify-between py-2.5 px-1 rounded-md hover:bg-muted/20 transition-colors">
+    <div className="flex items-center gap-2.5">
+      <div 
+        style={{ backgroundColor: component.iconColor || 'hsl(var(--muted))' }} 
+        className="w-3 h-3 rounded-full flex-shrink-0" 
+      />
+      <span className="text-sm text-foreground">{component.name}</span>
+      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70" />
+    </div>
+    <div className="bg-input px-2.5 py-1 rounded-sm text-xs text-foreground font-mono shadow-sm">
+      {component.value}
+    </div>
+  </div>
+);
+
 
 const ObjectDetailsPanel: React.FC<ObjectDetailsPanelProps> = ({ selectedObject, isOpen, onClose }) => {
   if (!selectedObject) {
     return null;
   }
 
-  const definitionKey = selectedObject.name.toUpperCase().replace(/\s+/g, '');
-  const definition = REAL_OBJECT_DEFINITIONS[definitionKey] || REAL_OBJECT_DEFINITIONS[selectedObject.name];
+  // Attempt to find definition using various capitalizations or direct name match
+  const definitionKeyFull = selectedObject.name.toUpperCase().replace(/\s+/g, '');
+  const definitionKeyName = selectedObject.name;
+  const definition = REAL_OBJECT_DEFINITIONS[definitionKeyFull] || REAL_OBJECT_DEFINITIONS[definitionKeyName] || 
+                     Object.values(REAL_OBJECT_DEFINITIONS).find(def => def.name.toLowerCase() === selectedObject.name.toLowerCase());
+
 
   const calculateSpeed = (velocity: { x: number; y: number; z: number }): number => {
     return Math.sqrt(velocity.x ** 2 + velocity.y ** 2 + velocity.z ** 2);
@@ -58,6 +77,8 @@ const ObjectDetailsPanel: React.FC<ObjectDetailsPanelProps> = ({ selectedObject,
     : (selectedObject.type === 'massive' ? 'Massive stellar object' : `Orbiter (Type: ${selectedObject.type})`);
 
   return (
+    // The onOpenChange from Sheet now directly calls onClose when the sheet intends to close (e.g. by pressing Esc or clicking overlay)
+    // The default X button from SheetContent will also trigger this.
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <SheetContent 
         side="right" 
@@ -65,17 +86,12 @@ const ObjectDetailsPanel: React.FC<ObjectDetailsPanelProps> = ({ selectedObject,
         onInteractOutside={(e) => e.preventDefault()} 
       >
         <div className="p-4 border-b border-border">
-          {/* Image placeholder removed */}
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-2xl font-bold text-foreground">{selectedObject.name}</h2>
               <p className="text-sm text-muted-foreground">{subtitle}</p>
             </div>
-            <SheetClose asChild>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground -mr-2 -mt-1">
-                <XIcon className="h-5 w-5" />
-              </Button>
-            </SheetClose>
+            {/* Explicit SheetClose button removed here - SheetContent provides its own */}
           </div>
         </div>
 
@@ -163,19 +179,20 @@ const ObjectDetailsPanel: React.FC<ObjectDetailsPanelProps> = ({ selectedObject,
                     <p className="text-muted-foreground">{definition.description}</p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No detailed surface description available.</p>
+                <p className="text-sm text-muted-foreground">No detailed surface description available for {selectedObject.name}.</p>
               )}
             </TabsContent>
 
             <TabsContent value="composition" className="p-4 mt-0">
               <h3 className="text-lg font-semibold mb-2 text-primary">Composition Details</h3>
-              {definition?.composition ? (
-                <div className="text-sm bg-muted/30 p-3 rounded-md border border-border/50">
-                     <p className="font-semibold mb-1 text-foreground">Primary Composition:</p>
-                     <p className="text-muted-foreground">{definition.composition}</p>
+              {definition?.composition && Array.isArray(definition.composition) && definition.composition.length > 0 ? (
+                <div className="space-y-1">
+                  {definition.composition.map((comp, index) => (
+                    <CompositionRow key={`${comp.name}-${index}`} component={comp} />
+                  ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No detailed composition data available.</p>
+                 <p className="text-sm text-muted-foreground">No detailed composition data available for {selectedObject.name}.</p>
               )}
             </TabsContent>
 
@@ -193,3 +210,4 @@ const ObjectDetailsPanel: React.FC<ObjectDetailsPanelProps> = ({ selectedObject,
 };
 
 export default ObjectDetailsPanel;
+
