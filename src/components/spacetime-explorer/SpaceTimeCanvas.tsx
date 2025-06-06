@@ -367,11 +367,11 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   useEffect(() => {
     if (!mountRef.current) return;
     const currentMount = mountRef.current;
-    const textureLoader = new THREE.TextureLoader();
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     const initialBgColor = new THREE.Color(0x0A0A1A); 
+    scene.background = initialBgColor;
     scene.fog = new THREE.Fog(0x050510, 7000, 25000);
 
 
@@ -432,27 +432,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         gridPlaneRef.current.geometry.userData.originalPositions =
             (gridPlaneRef.current.geometry.attributes.position as THREE.BufferAttribute).clone();
     }
-
-    const loadStaticBackground = () => {
-      textureLoader.load(
-        'https://placehold.co/1920x1080.png', // Use a reliable placeholder
-        (texture) => {
-          texture.mapping = THREE.EquirectangularReflectionMapping;
-          if (sceneRef.current) {
-            sceneRef.current.background = texture;
-          }
-          texture.needsUpdate = true; 
-        },
-        undefined, 
-        (error) => {
-          // This error block might still be useful if placehold.co is down or there's a network issue
-          console.error('Failed to load background texture (even placeholder):', error);
-          if (sceneRef.current) sceneRef.current.background = initialBgColor; 
-        }
-      );
-    };
-    loadStaticBackground();
-
 
     const handleDoubleClick = (event: MouseEvent) => {
       if (!cameraRef.current || !sceneRef.current || !selectedObjectId || !mountRef.current || !onObjectSelected) return;
@@ -533,9 +512,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       rendererRef.current?.dispose();
       
       const bgTexture = sceneRef.current?.background as THREE.Texture;
-      if (bgTexture && bgTexture.isTexture) {
+      if (bgTexture && bgTexture.isTexture) { // Check if it's a texture before disposing
         bgTexture.dispose();
       }
+
 
       objectsMapRef.current.forEach(mappedObj => {
         mappedObj.mainMesh.geometry.dispose();
