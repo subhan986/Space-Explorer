@@ -16,7 +16,7 @@ export const DEFAULT_SIMULATION_SPEED = 1.0;
 
 export const DEFAULT_TRAJECTORY_LENGTH = 200;
 
-export const G_CONSTANT = 1; // Gravitational constant - Reduced from 50 for more stable orbits
+export const G_CONSTANT = 1; // Gravitational constant - Reduced for more stable orbits
 export const DEFAULT_ORBITAL_DISTANCE_OFFSET = 50; // Default additional distance for orbiters from massive objects
 
 // Orbital Radii for "Real Solar System" preset (approximate simulation units)
@@ -31,5 +31,5 @@ export const SATURN_ORBIT_RADIUS = 1300;
 export const URANUS_ORBIT_RADIUS = 1900;
 export const NEPTUNE_ORBIT_RADIUS = 2500;
 
-export const MOON_ORBIT_RADIUS_AROUND_EARTH = 30;
+export const MOON_ORBIT_RADIUS_AROUND_EARTH = 10; // Reduced from 30 for stability
 
