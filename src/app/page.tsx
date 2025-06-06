@@ -8,14 +8,16 @@ import ControlPanel from '@/components/spacetime-explorer/ControlPanel';
 import type { SceneObject, LightingMode, SavedSimulationState } from '@/types/spacetime';
 import { PRESET_SCENARIOS } from '@/lib/preset-scenarios';
 import { DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
-import { Palette } from 'lucide-react';
+import { Palette, Settings } from 'lucide-react'; // Added Settings icon
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'; // Added more Sheet components
 import UICustomizer from '@/components/ui-customizer/UICustomizer';
 import { CustomizationProvider } from '@/contexts/CustomizationContext';
 import ObjectDetailsPanel from '@/components/spacetime-explorer/ObjectDetailsPanel';
+import ObjectManagementPanel from '@/components/spacetime-explorer/ObjectManagementPanel';
+
 
 const SpaceTimeCanvas = dynamic(() => import('@/components/spacetime-explorer/SpaceTimeCanvas'), {
   ssr: false,
@@ -41,26 +43,25 @@ export default function SpacetimeExplorerPage() {
   const [currentSimulatedDate, setCurrentSimulatedDate] = useState<Date>(new Date());
   const { toast } = useToast();
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [isControlsPanelOpen, setIsControlsPanelOpen] = useState(false);
+
 
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
   const [liveSelectedObjectData, setLiveSelectedObjectData] = useState<SceneObject | null>(null);
 
   const selectedObjectData = objects.find(obj => obj.id === selectedObjectId);
 
-  // Effect to sync liveSelectedObjectData when sim is not running, or close panel if object becomes invalid
   useEffect(() => {
     if (selectedObjectId && selectedObjectData) {
-      // Panel opening is now primarily handled by handleSelectObject.
-      // This effect ensures live data is correct when sim is not running.
       if (simulationStatus !== 'running') {
         setLiveSelectedObjectData(selectedObjectData);
       }
+      // Note: setIsDetailsPanelOpen(true) is now handled by handleSelectObject
     } else {
-      // If object is deselected or no longer valid in 'objects' array, ensure panel is closed and live data cleared.
       setIsDetailsPanelOpen(false);
       setLiveSelectedObjectData(null);
     }
-  }, [selectedObjectId, objects, selectedObjectData, simulationStatus, setIsDetailsPanelOpen, setLiveSelectedObjectData]);
+  }, [selectedObjectId, objects, selectedObjectData, simulationStatus]);
 
 
   const handleDetailsPanelClose = () => {
@@ -69,61 +70,54 @@ export default function SpacetimeExplorerPage() {
   };
 
   const handleSelectedObjectUpdate = useCallback((updatedState: SceneObject) => {
-    // This callback is from SpaceTimeCanvas, updating for live data display
     if (updatedState.id === selectedObjectId) {
         setLiveSelectedObjectData(updatedState);
     }
-  }, [selectedObjectId, setLiveSelectedObjectData]);
+  }, [selectedObjectId]);
 
 
   const handleAddObject = useCallback((object: SceneObject) => {
     setObjects(prev => [...prev, object]);
-  }, [setObjects]);
+  }, []);
 
   const handleUpdateObject = useCallback((updatedObject: SceneObject) => {
     setObjects(prev => prev.map(obj => obj.id === updatedObject.id ? updatedObject : obj));
     if (updatedObject.id === selectedObjectId && simulationStatus !== 'running') {
       setLiveSelectedObjectData(updatedObject);
     }
-  }, [selectedObjectId, simulationStatus, setObjects, setLiveSelectedObjectData]);
+  }, [selectedObjectId, simulationStatus]);
 
   const handleRemoveObject = useCallback((objectId: string) => {
     setObjects(prev => prev.filter(obj => obj.id !== objectId));
     if (selectedObjectId === objectId) {
-      setSelectedObjectId(null); // This will trigger useEffect to close panel & clear live data
-      // No need to explicitly call setIsDetailsPanelOpen(false) or setLiveSelectedObjectData(null) here,
-      // as the useEffect dependent on selectedObjectId will handle it.
+      setSelectedObjectId(null); 
     }
-  }, [selectedObjectId, setSelectedObjectId, setObjects]);
+  }, [selectedObjectId]);
 
   const handleSelectObject = useCallback((objectId: string | null) => {
     setSelectedObjectId(objectId);
     if (objectId) {
       const objectData = objects.find(obj => obj.id === objectId);
       if (objectData) {
-        setLiveSelectedObjectData(objectData); // Pre-populate with static data for immediate display
-        setIsDetailsPanelOpen(true); // Explicitly open panel on selection
+        setLiveSelectedObjectData(objectData); 
+        setIsDetailsPanelOpen(true); 
       } else {
-        // Object ID was given, but it's not found (e.g., removed just before selection attempt)
         setIsDetailsPanelOpen(false);
         setLiveSelectedObjectData(null);
-        setSelectedObjectId(null); // Clear the invalid ID
+        setSelectedObjectId(null); 
       }
     } else {
-      // Deselecting
       setIsDetailsPanelOpen(false);
       setLiveSelectedObjectData(null);
     }
-  }, [objects, setIsDetailsPanelOpen, setSelectedObjectId, setLiveSelectedObjectData]);
+  }, [objects]);
 
   const handleResetSimulation = useCallback(() => {
     setSimulationStatus('stopped');
-    setObjects([]); // Clears objects
+    // setObjects([]); // Objects are no longer cleared on reset
     setSelectedObjectId(null);
-    // setLiveSelectedObjectData(null); // Handled by useEffect
-    // setIsDetailsPanelOpen(false); // Handled by useEffect
     setCurrentSimulatedDate(new Date());
-  }, [setObjects, setSelectedObjectId, setCurrentSimulatedDate, setSimulationStatus]);
+  }, [setSelectedObjectId, setCurrentSimulatedDate, setSimulationStatus]);
 
   const handleSimulatedTimeDeltaUpdate = useCallback((simDaysDelta: number) => {
     setCurrentSimulatedDate(prevDate => {
@@ -131,17 +125,16 @@ export default function SpacetimeExplorerPage() {
       newDate.setDate(newDate.getDate() + simDaysDelta);
       return newDate;
     });
-  }, [setCurrentSimulatedDate]);
+  }, []);
 
 
   const handleObjectsCollidedAndMerged = useCallback((absorbedObjectId: string, absorberObjectId: string, absorbedObjectMass: number) => {
-    // Store original names for toast message before state updates
     const originalAbsorber = objects.find(o => o.id === absorberObjectId);
     const originalAbsorbed = objects.find(o => o.id === absorbedObjectId);
 
     setObjects(prevObjects => {
       const currentAbsorberObject = prevObjects.find(obj => obj.id === absorberObjectId);
-      if (!currentAbsorberObject) return prevObjects; // Should not happen if logic is correct
+      if (!currentAbsorberObject) return prevObjects; 
 
       const newAbsorberMass = (currentAbsorberObject.mass || 0) + absorbedObjectMass;
       const updatedObjects = prevObjects
@@ -152,7 +145,6 @@ export default function SpacetimeExplorerPage() {
             : obj
         );
       
-      // If the absorber is the currently selected object and sim is not running, update live data
       if (absorberObjectId === selectedObjectId && simulationStatus !== 'running') {
         const updatedAbsorberForLiveData = updatedObjects.find(o => o.id === absorberObjectId);
         if (updatedAbsorberForLiveData) setLiveSelectedObjectData(updatedAbsorberForLiveData);
@@ -160,8 +152,6 @@ export default function SpacetimeExplorerPage() {
       return updatedObjects;
     });
 
-    // If the absorbed object was selected, deselect it.
-    // The useEffect for selectedObjectId will handle closing the panel.
     if (selectedObjectId === absorbedObjectId) {
       setSelectedObjectId(null);
     }
@@ -171,7 +161,7 @@ export default function SpacetimeExplorerPage() {
       description: `${originalAbsorbed?.name || 'An object'} was absorbed by ${originalAbsorber?.name || 'another object'}. Mass transferred.`
     });
 
-  }, [selectedObjectId, toast, objects, simulationStatus, setObjects, setSelectedObjectId, setLiveSelectedObjectData]);
+  }, [selectedObjectId, toast, objects, simulationStatus]);
 
   const handleSaveState = useCallback(() => {
     try {
@@ -205,7 +195,7 @@ export default function SpacetimeExplorerPage() {
         setShowShadows(savedState.showShadows);
         setCurrentSimulatedDate(savedState.simulatedDate ? new Date(savedState.simulatedDate) : new Date());
         setSimulationStatus('stopped');
-        setSelectedObjectId(null); // Triggers useEffect to close panel & clear live data
+        setSelectedObjectId(null); 
         toast({ title: "Simulation Loaded", description: "Saved state loaded from local storage." });
       } else {
         toast({ title: "Load Failed", description: "No saved simulation state found.", variant: "destructive" });
@@ -214,25 +204,21 @@ export default function SpacetimeExplorerPage() {
       console.error("Error loading state:", error);
       toast({ title: "Load Failed", description: "Could not load simulation state.", variant: "destructive" });
     }
-  }, [toast, setObjects, setSimulationSpeed, setShowTrajectories, setTrajectoryLength, setLightingMode, setShowShadows, setCurrentSimulatedDate, setSimulationStatus, setSelectedObjectId]);
+  }, [toast]);
 
   const handleLoadPreset = useCallback((presetKey: string) => {
     const preset = PRESET_SCENARIOS[presetKey];
     if (preset) {
-      // Ensure unique IDs for preset objects to avoid key conflicts if loaded multiple times
       setObjects(preset.objects.map(obj => ({...obj, id: `${obj.id}_${Date.now()}_${Math.random().toString(36).substring(2,7)}` })));
       setSimulationStatus('stopped');
-      setSelectedObjectId(null); // Triggers useEffect to close panel & clear live data
+      setSelectedObjectId(null); 
       setCurrentSimulatedDate(new Date());
       toast({ title: "Preset Loaded", description: `"${preset.name}" scenario is ready.` });
     } else {
       toast({ title: "Preset Error", description: "Could not load the selected preset.", variant: "destructive" });
     }
-  }, [toast, setObjects, setSimulationStatus, setSelectedObjectId, setCurrentSimulatedDate]);
+  }, [toast]);
 
-  // Determine which object data to display in the details panel
-  // Prioritize liveSelectedObjectData if the simulation is running and the IDs match.
-  // Otherwise, use the selectedObjectData from the main 'objects' array (which is static when sim is running).
   const displayObjectForDetailsPanel = 
     simulationStatus === 'running' && liveSelectedObjectData && liveSelectedObjectData.id === selectedObjectId
     ? liveSelectedObjectData
@@ -242,22 +228,57 @@ export default function SpacetimeExplorerPage() {
     <CustomizationProvider>
       <div className="flex flex-col h-screen bg-background text-foreground">
         <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-background z-20">
-          <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="rounded-full border-2 border-primary hover:bg-primary/10 active:bg-primary/20">
-                <Palette className="h-5 w-5 text-primary" />
-                <span className="sr-only">Open UI Customizer</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm p-0 flex flex-col overflow-y-auto z-50">
-              <UICustomizer />
-            </SheetContent>
-          </Sheet>
+          <div className="flex gap-2">
+            <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-full border-2 border-primary hover:bg-primary/10 active:bg-primary/20">
+                  <Palette className="h-5 w-5 text-primary" />
+                  <span className="sr-only">Open UI Customizer</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm p-0 flex flex-col overflow-y-auto z-50">
+                <UICustomizer />
+              </SheetContent>
+            </Sheet>
+            
+            {/* Button to open Control Panel Sheet */}
+            <Sheet open={isControlsPanelOpen} onOpenChange={setIsControlsPanelOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-full border-2 border-secondary hover:bg-secondary/10 active:bg-secondary/20">
+                  <Settings className="h-5 w-5 text-secondary" />
+                  <span className="sr-only">Open Controls Panel</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent 
+                side="left" 
+                className="w-full max-w-md p-0 flex flex-col overflow-y-auto z-40 bg-card text-card-foreground" // Ensure z-index is appropriate
+                style={{marginTop: '3.5rem', height: 'calc(100vh - 3.5rem)'}} // Position below header
+              >
+                 <SheetHeader className="p-4 border-b sticky top-0 bg-card z-10">
+                    <SheetTitle className="text-card-foreground">Spacetime Controls</SheetTitle>
+                    <SheetDescription className="text-muted-foreground">
+                    Adjust simulation parameters and manage celestial objects.
+                    </SheetDescription>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto p-1"> {/* Make this part scrollable */}
+                    <ObjectManagementPanel
+                        objects={objects}
+                        selectedObjectId={selectedObjectId}
+                        onAddObject={handleAddObject}
+                        onUpdateObject={handleUpdateObject}
+                        onRemoveObject={handleRemoveObject}
+                        onSelectObject={handleSelectObject}
+                        onClose={() => setIsControlsPanelOpen(false)} // Assuming ObjectManagementPanel has a way to call this
+                    />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
 
           <h1 className="text-md md:text-lg font-semibold text-foreground flex-1 text-center truncate px-2">
             Spacetime Explorer
           </h1>
-          <div className="w-10 h-10"> {/* Spacer to balance the left icon button */} </div>
+          <div className="w-10 h-10"> {/* Spacer to balance the left icon buttons */} </div>
         </header>
 
         <main className="flex-1 overflow-hidden relative">
@@ -278,8 +299,8 @@ export default function SpacetimeExplorerPage() {
         </main>
 
         <ControlPanel
-            objects={objects}
-            selectedObjectId={selectedObjectId}
+            objects={objects} // Still pass objects for context if needed by Load Preset, Add Real Object etc.
+            selectedObjectId={selectedObjectId} // For context if any control depends on selection
             simulationStatus={simulationStatus}
             simulationSpeed={simulationSpeed}
             showTrajectories={showTrajectories}
@@ -287,10 +308,10 @@ export default function SpacetimeExplorerPage() {
             showShadows={showShadows}
             lightingMode={lightingMode}
             currentSimulatedDate={currentSimulatedDate}
-            onAddObject={handleAddObject}
-            onUpdateObject={handleUpdateObject}
-            onRemoveObject={handleRemoveObject}
-            onSelectObject={handleSelectObject}
+            onAddObject={handleAddObject} // May still be needed for "Add Real Object" directly from bar
+            onUpdateObject={handleUpdateObject} // If any direct update is possible from bar
+            onRemoveObject={handleRemoveObject} // If direct removal is possible
+            onSelectObject={handleSelectObject} // If selection can be changed from bar
             onSetSimulationStatus={setSimulationStatus}
             onSetSimulationSpeed={setSimulationSpeed}
             onResetSimulation={handleResetSimulation}
