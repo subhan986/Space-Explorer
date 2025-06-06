@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
-import type { SceneObject, ObjectType, LightingMode } from '@/types/spacetime';
+import type { SceneObject, ObjectType, LightingMode, Vector3 } from '@/types/spacetime';
 import { GRID_SIZE, GRID_DIVISIONS, INITIAL_CAMERA_POSITION, G_CONSTANT } from '@/lib/constants';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -21,6 +21,7 @@ interface SpaceTimeCanvasProps {
   onObjectsCollidedAndMerged: (absorbedObjectId: string, absorberObjectId: string, absorbedObjectMass: number) => void;
   showShadows: boolean;
   lightingMode: LightingMode;
+  onSelectedObjectUpdate?: (objectState: SceneObject) => void;
 }
 
 interface SimulationObjectInternal {
@@ -32,7 +33,7 @@ interface SimulationObjectInternal {
   radius: number;
   color: string;
   name: string;
-  netForceMagnitude?: number;
+  // netForceMagnitude?: number; // Removed
 }
 
 interface MappedObject {
@@ -53,6 +54,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   onObjectsCollidedAndMerged,
   showShadows,
   lightingMode,
+  onSelectedObjectUpdate,
 }) => {
   const { settings: customizationSettings } = useCustomization();
   const mountRef = useRef<HTMLDivElement>(null);
@@ -73,9 +75,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   const simulationObjectsRef = useRef<Map<string, SimulationObjectInternal>>(new Map());
   const gridPlaneRef = useRef<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null>(null);
   const animationFrameIdRef = useRef<number>();
-  
-  const [forceDisplayData, setForceDisplayData] = useState<{ id: string; name: string; force: number | undefined }[]>([]);
-
+    
   const isZoomingRef = useRef(false);
   const zoomTargetPositionRef = useRef(new THREE.Vector3());
   const zoomTargetLookAtRef = useRef(new THREE.Vector3());
@@ -84,7 +84,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   const raycasterRef = useRef(new THREE.Raycaster());
   const mouseRef = useRef(new THREE.Vector2());
 
-  // Refs for keyboard camera movement
   const keysPressedRef = useRef<{ [key: string]: boolean }>({});
   const cameraMoveSpeed = 100.0;
 
@@ -100,7 +99,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     
     simObjectsArray.forEach(obj => {
       if (!isValidVector(obj.threePosition) || !isValidVector(obj.threeVelocity)) {
-        obj.netForceMagnitude = 0;
+        // obj.netForceMagnitude = 0; // Removed
         return;
       }
 
@@ -137,7 +136,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         totalForce.copy(testParticleForce);
       }
       
-      obj.netForceMagnitude = totalForce.length();
+      // obj.netForceMagnitude = totalForce.length(); // Removed
       let acceleration = new THREE.Vector3(0,0,0);
       if (obj.mass > 0) {
         acceleration = totalForce.clone().divideScalar(obj.mass);
@@ -156,7 +155,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             testParticleForce.add(forceOnParticle);
         });
         acceleration.copy(testParticleForce); 
-        obj.netForceMagnitude = testParticleForce.length();
+        // obj.netForceMagnitude = testParticleForce.length(); // Removed
       }
 
 
@@ -325,11 +324,11 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const camera = cameraRef.current;
     const controls = controlsRef.current;
-    const moveDistance = cameraMoveSpeed * deltaTime * simulationSpeed; // Scale by simulationSpeed for consistent feel
+    const moveDistance = cameraMoveSpeed * deltaTime * simulationSpeed; 
 
     const forward = new THREE.Vector3();
     camera.getWorldDirection(forward);
-    const right = new THREE.Vector3().crossVectors(camera.up, forward).normalize(); // Corrected: camera.up X forward
+    const right = new THREE.Vector3().crossVectors(camera.up, forward).normalize(); 
 
     let moved = false;
 
@@ -342,7 +341,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       moved = true;
     }
     if (keysPressedRef.current['a']) {
-      // To move left, we move along the negative 'right' vector
       camera.position.addScaledVector(right.clone().negate(), moveDistance);
       moved = true;
     }
@@ -350,18 +348,17 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       camera.position.addScaledVector(right, moveDistance);
       moved = true;
     }
-    if (keysPressedRef.current['q']) { // Up
+    if (keysPressedRef.current['q']) { 
       camera.position.y += moveDistance;
       moved = true;
     }
-    if (keysPressedRef.current['e']) { // Down
+    if (keysPressedRef.current['e']) { 
       camera.position.y -= moveDistance;
       moved = true;
     }
 
     if (moved) {
-      // Update controls target to be in front of the camera
-      controls.target.copy(camera.position).addScaledVector(forward, 10); // Target a point 10 units in front
+      controls.target.copy(camera.position).addScaledVector(forward, 10); 
     }
   }, [simulationSpeed]);
 
@@ -469,7 +466,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         const clickedObjectMesh = intersects[0].object as THREE.Mesh;
         const clickedObjectId = clickedObjectMesh.name; 
     
-        if (clickedObjectId === selectedObjectId) { // Check if already selected
+        if (clickedObjectId === selectedObjectId) { 
           const simObj = simulationObjectsRef.current.get(selectedObjectId);
           if (simObj && isValidVector(simObj.threePosition)) {
             isZoomingRef.current = true;
@@ -478,13 +475,13 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             
             const direction = new THREE.Vector3();
             cameraRef.current.getWorldDirection(direction); 
-            const distance = Math.max(simObj.radius * 5, 100); // Adjusted zoom distance
+            const distance = Math.max(simObj.radius * 5, 100); 
             
             const offsetDirection = cameraRef.current.position.clone().sub(simObj.threePosition).normalize();
             zoomTargetPositionRef.current.copy(simObj.threePosition).add(offsetDirection.multiplyScalar(distance));
           }
         } else {
-           onObjectSelected(clickedObjectId); // Select if not already selected
+           onObjectSelected(clickedObjectId); 
         }
       }
     };
@@ -650,7 +647,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           }
         } else if (controlsRef.current && selectedObjectId && !isZoomingRef.current) {
           const selectedSimObj = simulationObjectsRef.current.get(selectedObjectId);
-          if (selectedSimObj && isValidVector(selectedSimObj.threePosition) && !Object.values(keysPressedRef.current).some(pressed => pressed)) { // Only follow if not moving with WASD
+          if (selectedSimObj && isValidVector(selectedSimObj.threePosition) && !Object.values(keysPressedRef.current).some(pressed => pressed)) { 
             controlsRef.current.target.lerp(selectedSimObj.threePosition, 0.1); 
           }
         }
@@ -669,24 +666,29 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 mappedObj.accretionDiskMesh.rotation.y += 0.002 * simulationSpeed; 
               }
             });
-
-            const newForceData = Array.from(simulationObjectsRef.current.values()).map(simObj => ({
-              id: simObj.id, name: simObj.name, force: simObj.netForceMagnitude,
-            }));
-            setForceDisplayData(newForceData);
-        } else {
-          // lastTimestamp = 0; // Reset lastTimestamp if paused or stopped so deltaTime is fresh on resume
-           const newForceData = Array.from(simulationObjectsRef.current.values()).map(simObj => ({
-              id: simObj.id, name: simObj.name, force: simulationStatus === 'stopped' ? 0 : simObj.netForceMagnitude,
-            }));
-          setForceDisplayData(newForceData);
+            
+            if (onSelectedObjectUpdate && selectedObjectId) {
+              const simObj = simulationObjectsRef.current.get(selectedObjectId);
+              if (simObj) {
+                onSelectedObjectUpdate({
+                  id: simObj.id,
+                  name: simObj.name,
+                  type: simObj.type,
+                  mass: simObj.mass,
+                  radius: simObj.radius,
+                  color: simObj.color,
+                  position: { x: simObj.threePosition.x, y: simObj.threePosition.y, z: simObj.threePosition.z },
+                  velocity: { x: simObj.threeVelocity.x, y: simObj.threeVelocity.y, z: simObj.threeVelocity.z },
+                });
+              }
+            }
         }
         renderer.render(scene, camera);
         labelRenderer.render(scene, camera);
     };
     animate(0); 
     return () => { if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current); };
-  }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid, selectedObjectId, isValidVector, handleKeyboardCameraMovement]);
+  }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid, selectedObjectId, isValidVector, handleKeyboardCameraMovement, onSelectedObjectUpdate]);
 
 
   useEffect(() => {
@@ -713,7 +715,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           id: objData.id, type: objData.type, mass: propMass,
           threePosition: newThreePosition, threeVelocity: newThreeVelocity,
           radius: propRadius, color: objData.color, name: objData.name,
-          netForceMagnitude: 0,
         };
         newSimMap.set(objData.id, simObj);
 
@@ -999,7 +1000,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           id: objData.id, type: objData.type, mass: propMass,
           threePosition: threePos, threeVelocity: threeVel,
           radius: propRadius, color: objData.color, name: objData.name, 
-          netForceMagnitude: 0,
         });
 
         const mappedObj = objectsMapRef.current.get(objData.id);
@@ -1032,7 +1032,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 material.roughness = 0.8;
                 threeMesh.castShadow = false;
                 threeMesh.receiveShadow = false;
-            } else if (objData.name === "Earth" || objData.name === "Moon" || objData.name === "Jupiter" || objData.name === "Ceres" || objData.name === "Mercury" || objData.name === "Venus" || objData.name === "Mars" || objData.name === "Saturn" || objData.name === "Uranus" || objData.name === "Neptune") {
+            } else if (objData.name === "Earth" || objData.name === "Moon" || objData.name === "Jupiter" || simObj.name === "Ceres" || simObj.name === "Mercury" || simObj.name === "Venus" || simObj.name === "Mars" || simObj.name === "Saturn" || simObj.name === "Uranus" || simObj.name === "Neptune") { // Corrected simObj to objData
                 material.metalness = 0.1;
                 material.roughness = 0.7;
                 material.emissive?.set(0x000000);
@@ -1105,20 +1105,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
 
   return (
-    <div ref={mountRef} className="w-full h-full rounded-lg shadow-xl bg-background relative">
-      <div className="absolute bottom-2 right-2 bg-black/70 text-white p-3 rounded-lg text-xs max-w-sm max-h-60 overflow-y-auto shadow-lg border border-gray-700">
-        <h4 className="font-bold mb-2 text-sm border-b border-gray-600 pb-1">Net Gravitational Forces:</h4>
-        {forceDisplayData.length === 0 && <p className="italic text-gray-400">No objects in simulation.</p>}
-        {forceDisplayData.map(data => (
-          <div key={data.id} className="truncate py-0.5">
-            <span className="font-medium">{data.name}</span>:
-            <span className="ml-1">{data.force !== undefined ? data.force.toFixed(2) : 'N/A'}</span>
-            <span className="text-gray-400 ml-1">units</span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <div ref={mountRef} className="w-full h-full rounded-lg shadow-xl bg-background relative" />
   );
 };
 
 export default SpaceTimeCanvas;
+
+    
