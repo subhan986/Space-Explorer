@@ -7,8 +7,8 @@ import {
   SUN_SIMULATION_MASS,
   MERCURY_ORBIT_RADIUS, VENUS_ORBIT_RADIUS, EARTH_ORBIT_RADIUS,
   MARS_ORBIT_RADIUS, JUPITER_ORBIT_RADIUS, SATURN_ORBIT_RADIUS,
-  URANUS_ORBIT_RADIUS, NEPTUNE_ORBIT_RADIUS,
-  MOON_ORBIT_RADIUS_AROUND_EARTH
+  URANUS_ORBIT_RADIUS, NEPTUNE_ORBIT_RADIUS
+  // MOON_ORBIT_RADIUS_AROUND_EARTH, // Moon constant no longer needed here
 } from './constants';
 
 // Helper to calculate orbital velocity
@@ -52,7 +52,7 @@ const getPlanetWithOrbit = (
 export const PRESET_SCENARIOS: Record<string, { name: string; description: string; objects: SceneObject[] }> = {
   realSolarSystem: {
     name: "Real Solar System",
-    description: "The Sun, 8 planets, and Earth's Moon in approximate orbits.",
+    description: "The Sun and 8 planets in approximate orbits.", // Updated description
     objects: (() => {
       const sun = {
         ...REAL_OBJECT_DEFINITIONS.SUN,
@@ -72,32 +72,33 @@ export const PRESET_SCENARIOS: Record<string, { name: string; description: strin
         getPlanetWithOrbit('NEPTUNE', NEPTUNE_ORBIT_RADIUS, SUN_SIMULATION_MASS, 315),
       ];
 
-      const earth = planets.find(p => p.name === 'Earth');
-      let moon: SceneObject | null = null;
-      if (earth) {
-        const moonDef = REAL_OBJECT_DEFINITIONS.MOON;
-        const moonOrbitalVelocity = calculateOrbitalVelocity(earth.mass, MOON_ORBIT_RADIUS_AROUND_EARTH);
-        moon = {
-          id: 'preset_moon_rss',
-          type: moonDef.type,
-          name: moonDef.name,
-          mass: moonDef.mass,
-          radius: moonDef.radius,
-          color: moonDef.color,
-          position: {
-            x: earth.position.x + MOON_ORBIT_RADIUS_AROUND_EARTH,
-            y: earth.position.y, // Keep moon in the same Y plane as Earth for simplicity
-            z: earth.position.z,
-          },
-          velocity: {
-            x: earth.velocity.x,
-            y: earth.velocity.y,
-            z: earth.velocity.z + moonOrbitalVelocity, // Orbiting Earth in its XZ plane
-          },
-        };
-      }
+      // Moon creation logic removed
+      // const earth = planets.find(p => p.name === 'Earth');
+      // let moon: SceneObject | null = null;
+      // if (earth) {
+      //   const moonDef = REAL_OBJECT_DEFINITIONS.MOON;
+      //   const moonOrbitalVelocity = calculateOrbitalVelocity(earth.mass, MOON_ORBIT_RADIUS_AROUND_EARTH);
+      //   moon = {
+      //     id: 'preset_moon_rss',
+      //     type: moonDef.type,
+      //     name: moonDef.name,
+      //     mass: moonDef.mass,
+      //     radius: moonDef.radius,
+      //     color: moonDef.color,
+      //     position: {
+      //       x: earth.position.x + MOON_ORBIT_RADIUS_AROUND_EARTH,
+      //       y: earth.position.y,
+      //       z: earth.position.z,
+      //     },
+      //     velocity: {
+      //       x: earth.velocity.x,
+      //       y: earth.velocity.y,
+      //       z: earth.velocity.z + moonOrbitalVelocity,
+      //     },
+      //   };
+      // }
 
-      return [sun, ...planets, ...(moon ? [moon] : [])];
+      return [sun, ...planets]; // Removed Moon from the return array
     })(),
   },
   binaryPair: {
@@ -133,3 +134,4 @@ export const PRESET_SCENARIOS: Record<string, { name: string; description: strin
     ]
   }
 };
+
