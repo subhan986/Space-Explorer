@@ -22,6 +22,7 @@ interface SpaceTimeCanvasProps {
   showShadows: boolean;
   lightingMode: LightingMode;
   onSelectedObjectUpdate?: (objectState: SceneObject) => void;
+  onSimulatedTimeDeltaUpdate?: (simDaysDelta: number) => void;
 }
 
 interface SimulationObjectInternal {
@@ -54,6 +55,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   showShadows,
   lightingMode,
   onSelectedObjectUpdate,
+  onSimulatedTimeDeltaUpdate,
 }) => {
   const { settings: customizationSettings } = useCustomization();
   const mountRef = useRef<HTMLDivElement>(null);
@@ -357,10 +359,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     if (movedByKeyboard) {
       const actualDeltaMovement = camera.position.clone().sub(cameraOriginalPosition);
       controls.target.add(actualDeltaMovement); 
-
-      if (isZoomingRef.current) {
-        isZoomingRef.current = false;
-      }
+      isZoomingRef.current = false; 
     }
   }, [simulationSpeed]);
 
@@ -436,7 +435,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const loadStaticBackground = () => {
       textureLoader.load(
-        '/space_background.jpg', 
+        'https://placehold.co/1920x1080.png', // Use a reliable placeholder
         (texture) => {
           texture.mapping = THREE.EquirectangularReflectionMapping;
           if (sceneRef.current) {
@@ -446,7 +445,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         },
         undefined, 
         (error) => {
-          console.error('Failed to load static background texture:', error);
+          // This error block might still be useful if placehold.co is down or there's a network issue
+          console.error('Failed to load background texture (even placeholder):', error);
           if (sceneRef.current) sceneRef.current.background = initialBgColor; 
         }
       );
@@ -663,6 +663,11 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             updateTrajectories();
             deformGrid();
 
+            if (onSimulatedTimeDeltaUpdate) {
+              const simDaysElapsed = effectiveDeltaTimeForPhysics * simulationSpeed; 
+              onSimulatedTimeDeltaUpdate(simDaysElapsed);
+            }
+
             objectsMapRef.current.forEach((mappedObj, objectId) => {
               const simObjInternal = simulationObjectsRef.current.get(objectId);
               if (simObjInternal && (mappedObj.objectName === 'Black Hole' || mappedObj.objectName === 'Sagittarius A*') && mappedObj.accretionDiskMesh) {
@@ -691,7 +696,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     };
     animate(0); 
     return () => { if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current); };
-  }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid, selectedObjectId, isValidVector, handleKeyboardCameraMovement, onSelectedObjectUpdate]);
+  }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid, selectedObjectId, isValidVector, handleKeyboardCameraMovement, onSelectedObjectUpdate, onSimulatedTimeDeltaUpdate]);
 
 
   useEffect(() => {
