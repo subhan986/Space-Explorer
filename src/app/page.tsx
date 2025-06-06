@@ -244,7 +244,7 @@ export default function SpacetimeExplorerPage() {
         <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-background z-20">
           <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="rounded-md border-2 border-primary hover:bg-primary/10 active:bg-primary/20">
+              <Button variant="outline" size="icon" className="rounded-full border-2 border-primary hover:bg-primary/10 active:bg-primary/20">
                 <Palette className="h-5 w-5 text-primary" />
                 <span className="sr-only">Open UI Customizer</span>
               </Button>

@@ -179,7 +179,7 @@ const ObjectManagementPanel: React.FC<ObjectManagementPanelProps> = ({
                     {obj.name} <span className="text-xs opacity-80">({obj.type}, M: {obj.mass.toFixed(1)})</span>
                   </span>
                 </div>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive-foreground hover:bg-destructive/30 flex-shrink-0" onClick={(e) => { e.stopPropagation(); onRemoveObject(obj.id); }}>
+                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full text-destructive-foreground hover:bg-destructive/30 flex-shrink-0" onClick={(e) => { e.stopPropagation(); onRemoveObject(obj.id); }}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Play, Pause, SkipForward, Settings2, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass, SaveIcon, BookOpenCheck, FolderOpen, SlidersHorizontal, PaletteIcon } from 'lucide-react';
+import { Play, Pause, SkipForward, Settings2, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass, SaveIcon, BookOpenCheck, FolderOpen, SlidersHorizontal, PaletteIcon, Rewind, FastForward, CalendarDays } from 'lucide-react';
 import type { SceneObject, ObjectType, LightingMode } from '@/types/spacetime';
 import { PRESET_SCENARIOS } from '@/lib/preset-scenarios';
 import { REAL_OBJECT_DEFINITIONS } from '@/lib/real-objects';
@@ -16,6 +16,8 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MIN_SIMULATION_SPEED, MAX_SIMULATION_SPEED } from '@/lib/constants';
 import ObjectManagementPanel from './ObjectManagementPanel'; // New component for object management UI
+import { format } from 'date-fns';
+
 
 interface ControlPanelProps {
   objects: SceneObject[];
@@ -26,6 +28,7 @@ interface ControlPanelProps {
   trajectoryLength: number;
   showShadows: boolean;
   lightingMode: LightingMode;
+  currentSimulatedDate: Date;
   onAddObject: (object: SceneObject) => void;
   onUpdateObject: (object: SceneObject) => void;
   onRemoveObject: (objectId: string) => void;
@@ -45,7 +48,7 @@ interface ControlPanelProps {
 const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   const {
     objects, selectedObjectId, simulationStatus, simulationSpeed, showTrajectories, trajectoryLength,
-    showShadows, lightingMode, onAddObject, onUpdateObject, onRemoveObject, onSelectObject,
+    showShadows, lightingMode, currentSimulatedDate, onAddObject, onUpdateObject, onRemoveObject, onSelectObject,
     onSetSimulationStatus, onSetSimulationSpeed, onResetSimulation, onSetShowTrajectories,
     onSetTrajectoryLength, onSetShowShadows, onSetLightingMode, onSaveState, onLoadState, onLoadPreset
   } = props;
@@ -53,8 +56,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   const [isObjectSheetOpen, setIsObjectSheetOpen] = useState(false);
 
   const handleAddRealObject = (objectKey: keyof typeof REAL_OBJECT_DEFINITIONS) => {
-     // This logic would need to be passed down or handled by a central manager if ObjectManagementPanel creates objects
-     // For simplicity, we keep it here for now if the Select is directly in ControlPanel
     const definition = REAL_OBJECT_DEFINITIONS[objectKey];
     if (!definition) return;
     const newObject: SceneObject = {
@@ -66,11 +67,23 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     onAddObject(newObject);
   };
 
+  const handleTogglePlayPause = () => {
+    if (simulationStatus === 'running') {
+      onSetSimulationStatus('paused');
+    } else {
+      onSetSimulationStatus('running');
+    }
+  };
+
+  const handleSpeedChange = (increment: number) => {
+    let newSpeed = simulationSpeed + increment;
+    newSpeed = Math.max(MIN_SIMULATION_SPEED, Math.min(MAX_SIMULATION_SPEED, newSpeed));
+    onSetSimulationSpeed(newSpeed);
+  };
 
   return (
     <div className="fixed bottom-0 left-0 right-0 h-auto bg-card text-card-foreground border-t border-border p-3 shadow-lg flex items-center justify-around flex-wrap gap-x-4 gap-y-2 z-10">
       
-      {/* Object Management Trigger */}
       <Sheet open={isObjectSheetOpen} onOpenChange={setIsObjectSheetOpen}>
         <SheetTrigger asChild>
           <Button variant="outline" size="sm" className="flex items-center gap-1.5">
@@ -94,40 +107,49 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       <div className="flex items-center gap-2">
         <Button
           size="icon"
-          title="Start Simulation"
-          onClick={() => onSetSimulationStatus('running')}
-          disabled={simulationStatus === 'running'}
-          className="h-8 w-8"
+          title={simulationStatus === 'running' ? "Pause Simulation" : "Start Simulation"}
+          onClick={handleTogglePlayPause}
+          className="h-8 w-8 rounded-full"
         >
-          <Play className="h-4 w-4" />
+          {simulationStatus === 'running' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        </Button>
+        <Button size="icon" title="Reset Simulation" onClick={onResetSimulation} className="h-8 w-8 rounded-full">
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Time and Speed Display */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <CalendarDays className="h-4 w-4" />
+          <span>{format(currentSimulatedDate, "yyyy-MM-dd hh:mm a")}</span>
+          <span className="mx-1">|</span>
+          <span>{simulationSpeed.toFixed(1)} day/s</span>
+      </div>
+
+       {/* Speed Adjustment Buttons */}
+      <div className="flex items-center gap-1">
+        <Button
+            size="icon"
+            variant="ghost"
+            title="Decrease Speed"
+            onClick={() => handleSpeedChange(-0.5)}
+            className="h-7 w-7 rounded-full"
+            disabled={simulationSpeed <= MIN_SIMULATION_SPEED}
+        >
+            <Rewind className="h-4 w-4" />
         </Button>
         <Button
-          size="icon"
-          title="Pause Simulation"
-          onClick={() => onSetSimulationStatus('paused')}
-          disabled={simulationStatus !== 'running'}
-          className="h-8 w-8"
+            size="icon"
+            variant="ghost"
+            title="Increase Speed"
+            onClick={() => handleSpeedChange(0.5)}
+            className="h-7 w-7 rounded-full"
+            disabled={simulationSpeed >= MAX_SIMULATION_SPEED}
         >
-          <Pause className="h-4 w-4" />
+            <FastForward className="h-4 w-4" />
         </Button>
-        <Button size="icon" title="Reset Simulation" onClick={onResetSimulation} className="h-8 w-8">
-          <SkipForward className="h-4 w-4" />
-        </Button>
-        <div className="flex flex-col items-start w-28 ml-2">
-          <Label htmlFor="simSpeed" className="text-xs text-muted-foreground mb-0.5">
-            Speed: {simulationSpeed.toFixed(1)}x
-          </Label>
-          <Slider
-            id="simSpeed"
-            min={MIN_SIMULATION_SPEED} max={MAX_SIMULATION_SPEED} step={0.1}
-            value={[simulationSpeed]}
-            onValueChange={(val) => onSetSimulationSpeed(val[0])}
-            className="[&>span:first-child]:h-1.5 [&>span>button]:h-3.5 [&>span>button]:w-3.5"
-          />
-        </div>
       </div>
       
-      {/* Trajectory Settings Popover */}
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="flex items-center gap-1.5">
@@ -156,7 +178,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         </PopoverContent>
       </Popover>
 
-      {/* Rendering Settings Popover */}
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="flex items-center gap-1.5">
@@ -186,7 +207,6 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         </PopoverContent>
       </Popover>
 
-      {/* Presets Select */}
       <Select onValueChange={(key) => onLoadPreset(key)}>
         <SelectTrigger className="w-[160px] h-9 text-xs">
           <SelectValue placeholder="Load Preset..." />
@@ -198,13 +218,11 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         </SelectContent>
       </Select>
       
-      {/* Save/Load Buttons */}
       <div className="flex items-center gap-2">
         <Button size="sm" onClick={onSaveState} className="h-9 flex items-center gap-1.5"><SaveIcon className="h-4 w-4"/>Save</Button>
         <Button size="sm" variant="outline" onClick={onLoadState} className="h-9 flex items-center gap-1.5"><FolderOpen className="h-4 w-4"/>Load</Button>
       </div>
 
-       {/* Add Real Object Select - Kept simple for now */}
       <Select onValueChange={(value) => handleAddRealObject(value as keyof typeof REAL_OBJECT_DEFINITIONS)}>
           <SelectTrigger className="w-[160px] h-9 text-xs">
               <SelectValue placeholder="Add Real Object..." />
