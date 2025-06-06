@@ -34,7 +34,7 @@ const ThemeColorControl: React.FC<ThemeColorControlProps> = ({ label, colorKey }
   return (
     <div className="space-y-2 p-3 border border-border rounded-lg shadow-sm bg-card">
       <Label className="text-base font-semibold text-card-foreground">{label}</Label>
-      <div className="grid grid-cols-3 gap-3 items-center">
+      <div className="grid grid-cols-3 gap-2 items-center">
         <div>
           <Label htmlFor={`${colorKey}-h`} className="text-xs text-muted-foreground db-1">H (0-359)</Label>
           <Input
@@ -66,7 +66,6 @@ const ThemeColorControl: React.FC<ThemeColorControlProps> = ({ label, colorKey }
             value={color.l}
             onChange={(e) => handleInputChange('l', e.target.value)}
             className="w-full h-9 text-sm p-2"
-            // Note: Lightness might be overridden by Light/Dark mode for some colors like background/foreground
           />
         </div>
       </div>
@@ -113,7 +112,7 @@ export default function UICustomizer() {
         </section>
         <Separator/>
         <section>
-          <h3 className="text-xl font-semibold mb-3">Theme Colors (Base)</h3>
+          <h3 className="text-xl font-semibold mb-3">Theme Colors (Base HSL)</h3>
           <p className="text-sm text-muted-foreground mb-4">
             Customize base Hue, Saturation, and Lightness. Lightness for Background/Foreground is primarily controlled by Appearance Mode.
           </p>
@@ -127,9 +126,9 @@ export default function UICustomizer() {
         <Separator />
         <section>
           <h3 className="text-xl font-semibold mb-4">Grid Customization</h3>
-          <div className="space-y-6 p-3 border border-border rounded-lg shadow-sm bg-card">
+          <div className="space-y-4 p-3 border border-border rounded-lg shadow-sm bg-card">
             <div>
-              <Label htmlFor="gridColor" className="text-base font-semibold text-card-foreground mb-2 block">Grid Color</Label>
+              <Label htmlFor="gridColor" className="text-base font-semibold text-card-foreground mb-1 block">Grid Color (Hex)</Label>
               <div className="flex items-center gap-2 mb-2">
                 <Input
                   id="gridColorInput"
@@ -144,10 +143,10 @@ export default function UICustomizer() {
               <HexColorPicker 
                 color={settings.gridColor} 
                 onChange={(newColor) => updateSetting('gridColor', newColor)} 
-                style={{ width: '100%'}}
+                style={{ width: '100%', height: '150px' }}
               />
             </div>
-            <div className="mt-4">
+            <div className="mt-3">
               <Label htmlFor="gridOpacity" className="text-base font-semibold text-card-foreground">Grid Opacity: {settings.gridOpacity.toFixed(2)}</Label>
               <Slider
                 id="gridOpacity"
@@ -164,12 +163,12 @@ export default function UICustomizer() {
           <h3 className="text-xl font-semibold mb-4">Layout (Placeholders)</h3>
           <div className="space-y-3 p-3 border border-border rounded-lg shadow-sm bg-card">
             <div className="flex items-center justify-between">
-              <Label className="text-card-foreground">Sidebar Width</Label>
-              <Input type="number" defaultValue="320" className="w-24 h-9 rounded-md border-input text-sm p-2" disabled />
+              <Label className="text-card-foreground text-sm">Sidebar Width</Label>
+              <Input type="number" defaultValue="320" className="w-20 h-8 rounded-md border-input text-xs p-1.5" disabled />
             </div>
             <div className="flex items-center justify-between">
-              <Label className="text-card-foreground">Font Size (Base)</Label>
-              <Input type="number" defaultValue="16" className="w-24 h-9 rounded-md border-input text-sm p-2" disabled />
+              <Label className="text-card-foreground text-sm">Font Size (Base)</Label>
+              <Input type="number" defaultValue="16" className="w-20 h-8 rounded-md border-input text-xs p-1.5" disabled />
             </div>
           </div>
         </section>
