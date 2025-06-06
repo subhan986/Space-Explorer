@@ -4,16 +4,15 @@
 
 import React, { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { SidebarProvider, Sidebar, SidebarInset, SidebarContent, SidebarTrigger } from '@/components/ui/sidebar';
 import ControlPanel from '@/components/spacetime-explorer/ControlPanel';
 import type { SceneObject, LightingMode, SavedSimulationState } from '@/types/spacetime';
 import { PRESET_SCENARIOS } from '@/lib/preset-scenarios';
 import { DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
-import { Settings, Palette, BookOpenCheck, SaveIcon } from 'lucide-react'; // Added BookOpenCheck, SaveIcon
+import { Palette } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import UICustomizer from '@/components/ui-customizer/UICustomizer';
 import { CustomizationProvider } from '@/contexts/CustomizationContext';
 
@@ -30,7 +29,7 @@ const SpaceTimeCanvas = dynamic(() => import('@/components/spacetime-explorer/Sp
 const LOCAL_STORAGE_SAVE_KEY = 'spacetimeExplorerSaveState';
 
 export default function SpacetimeExplorerPage() {
-  const [objects, setObjects] = useState<SceneObject[]>([]);
+  const [objects, setObjects] = useState<SceneObject[]>(PRESET_SCENARIOS.realSolarSystem.objects.map(obj => ({...obj, id: `${obj.id}_${Date.now()}` })));
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [simulationStatus, setSimulationStatus] = useState<'stopped' | 'running' | 'paused'>('stopped');
   const [simulationSpeed, setSimulationSpeed] = useState<number>(DEFAULT_SIMULATION_SPEED);
@@ -62,8 +61,10 @@ export default function SpacetimeExplorerPage() {
 
   const handleResetSimulation = useCallback(() => {
     setSimulationStatus('stopped');
-    // Optionally reset objects to initial state if presets/save-load modifies them significantly
-    // For now, 'stopped' mainly resets physics, not necessarily object positions to a default
+    // Optionally reload the last loaded preset or a default one
+    const currentPreset = PRESET_SCENARIOS.realSolarSystem; // Or track last loaded
+    setObjects(currentPreset.objects.map(obj => ({...obj, id: `${obj.id}_${Date.now()}` })));
+    setSelectedObjectId(null);
   }, []);
 
   const handleObjectsCollidedAndMerged = useCallback((absorbedObjectId: string, absorberObjectId: string, absorbedObjectMass: number) => {
@@ -140,7 +141,7 @@ export default function SpacetimeExplorerPage() {
   const handleLoadPreset = useCallback((presetKey: string) => {
     const preset = PRESET_SCENARIOS[presetKey];
     if (preset) {
-      setObjects(preset.objects.map(obj => ({...obj, id: `${obj.id}_${Date.now()}` }))); // Ensure unique IDs if loaded multiple times
+      setObjects(preset.objects.map(obj => ({...obj, id: `${obj.id}_${Date.now()}` })));
       setSimulationStatus('stopped');
       setSelectedObjectId(null);
       toast({ title: "Preset Loaded", description: `"${preset.name}" scenario is ready.` });
@@ -152,77 +153,66 @@ export default function SpacetimeExplorerPage() {
 
   return (
     <CustomizationProvider>
-      <SidebarProvider defaultOpen={true}>
-        <Sidebar
-          collapsible="offcanvas"
-          className="max-w-sm" 
-          variant="floating" 
-        >
-          <SidebarContent className="p-0">
-            <ControlPanel
+      <div className="flex flex-col h-screen bg-background text-foreground">
+        <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-background z-20"> {/* Increased z-index for header */}
+          <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="rounded-md border-2 border-primary hover:bg-primary/10 active:bg-primary/20">
+                <Palette className="h-5 w-5 text-primary" />
+                <span className="sr-only">Open UI Customizer</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm p-0 flex flex-col overflow-y-auto z-50"> {/* Ensure customizer is above canvas */}
+              <UICustomizer />
+            </SheetContent>
+          </Sheet>
+
+          <h1 className="text-md md:text-lg font-semibold text-foreground flex-1 text-center truncate px-2">
+            Spacetime Explorer
+          </h1>
+          <div className="w-10 h-10"> {/* Placeholder for right side icon if needed */}</div>
+        </header>
+        
+        <main className="flex-1 overflow-hidden relative"> {/* Added relative for canvas z-index context */}
+            <SpaceTimeCanvas
               objects={objects}
               selectedObjectId={selectedObjectId}
               simulationStatus={simulationStatus}
               simulationSpeed={simulationSpeed}
+              onObjectSelected={handleSelectObject} 
               showTrajectories={showTrajectories}
               trajectoryLength={trajectoryLength}
+              onObjectsCollidedAndMerged={handleObjectsCollidedAndMerged}
               showShadows={showShadows}
               lightingMode={lightingMode}
-              onAddObject={handleAddObject}
-              onUpdateObject={handleUpdateObject}
-              onRemoveObject={handleRemoveObject}
-              onSelectObject={handleSelectObject}
-              onSetSimulationStatus={setSimulationStatus}
-              onSetSimulationSpeed={setSimulationSpeed}
-              onResetSimulation={handleResetSimulation}
-              onSetShowTrajectories={setShowTrajectories}
-              onSetTrajectoryLength={setTrajectoryLength}
-              onSetShowShadows={setShowShadows}
-              onSetLightingMode={setLightingMode}
-              onSaveState={handleSaveState}
-              onLoadState={handleLoadState}
-              onLoadPreset={handleLoadPreset}
             />
-          </SidebarContent>
-        </Sidebar>
-        <SidebarInset className="flex flex-col h-screen bg-background">
-          <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-background z-10">
-            <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="rounded-md border-2 border-primary hover:bg-primary/10 active:bg-primary/20">
-                  <Palette className="h-5 w-5 text-primary" />
-                  <span className="sr-only">Open UI Customizer</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm p-0 flex flex-col overflow-y-auto">
-                <UICustomizer />
-              </SheetContent>
-            </Sheet>
+        </main>
 
-            <h1 className="text-md md:text-lg font-semibold text-foreground flex-1 text-center truncate px-2">
-              Spacetime Explorer
-            </h1>
-
-            <SidebarTrigger className="rounded-full">
-              <Settings />
-            </SidebarTrigger>
-          </header>
-          <main className="flex-1 overflow-hidden p-1 md:p-2">
-              <SpaceTimeCanvas
-                objects={objects}
-                selectedObjectId={selectedObjectId}
-                simulationStatus={simulationStatus}
-                simulationSpeed={simulationSpeed}
-                onObjectSelected={handleSelectObject} 
-                showTrajectories={showTrajectories}
-                trajectoryLength={trajectoryLength}
-                onObjectsCollidedAndMerged={handleObjectsCollidedAndMerged}
-                showShadows={showShadows}
-                lightingMode={lightingMode}
-              />
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
+        <ControlPanel
+            objects={objects}
+            selectedObjectId={selectedObjectId}
+            simulationStatus={simulationStatus}
+            simulationSpeed={simulationSpeed}
+            showTrajectories={showTrajectories}
+            trajectoryLength={trajectoryLength}
+            showShadows={showShadows}
+            lightingMode={lightingMode}
+            onAddObject={handleAddObject}
+            onUpdateObject={handleUpdateObject}
+            onRemoveObject={handleRemoveObject}
+            onSelectObject={handleSelectObject}
+            onSetSimulationStatus={setSimulationStatus}
+            onSetSimulationSpeed={setSimulationSpeed}
+            onResetSimulation={handleResetSimulation}
+            onSetShowTrajectories={setShowTrajectories}
+            onSetTrajectoryLength={setTrajectoryLength}
+            onSetShowShadows={setShowShadows}
+            onSetLightingMode={setLightingMode}
+            onSaveState={handleSaveState}
+            onLoadState={handleLoadState}
+            onLoadPreset={handleLoadPreset}
+          />
+      </div>
     </CustomizationProvider>
   );
 }
