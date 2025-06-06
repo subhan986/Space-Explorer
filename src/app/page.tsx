@@ -18,7 +18,7 @@ import { CustomizationProvider } from '@/contexts/CustomizationContext';
 import ObjectDetailsPanel from '@/components/spacetime-explorer/ObjectDetailsPanel'; // New Import
 
 const SpaceTimeCanvas = dynamic(() => import('@/components/spacetime-explorer/SpaceTimeCanvas'), {
-  ssr: false, 
+  ssr: false,
   loading: () => (
     <div className="w-full h-full flex items-center justify-center bg-background">
       <Skeleton className="w-3/4 h-3/4" />
@@ -30,7 +30,7 @@ const SpaceTimeCanvas = dynamic(() => import('@/components/spacetime-explorer/Sp
 const LOCAL_STORAGE_SAVE_KEY = 'spacetimeExplorerSaveState';
 
 export default function SpacetimeExplorerPage() {
-  const [objects, setObjects] = useState<SceneObject[]>(PRESET_SCENARIOS.realSolarSystem.objects.map(obj => ({...obj, id: `${obj.id}_${Date.now()}` })));
+  const [objects, setObjects] = useState<SceneObject[]>([]); // Start with an empty array
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [simulationStatus, setSimulationStatus] = useState<'stopped' | 'running' | 'paused'>('stopped');
   const [simulationSpeed, setSimulationSpeed] = useState<number>(DEFAULT_SIMULATION_SPEED);
@@ -40,7 +40,7 @@ export default function SpacetimeExplorerPage() {
   const [lightingMode, setLightingMode] = useState<LightingMode>("Realistic Solar");
   const { toast } = useToast();
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
-  
+
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
   const [liveSelectedObjectData, setLiveSelectedObjectData] = useState<SceneObject | null>(null);
 
@@ -61,7 +61,7 @@ export default function SpacetimeExplorerPage() {
 
   const handleDetailsPanelClose = () => {
     setIsDetailsPanelOpen(false);
-    setSelectedObjectId(null); 
+    setSelectedObjectId(null);
   };
 
   const handleSelectedObjectUpdate = useCallback((updatedState: SceneObject) => {
@@ -102,8 +102,7 @@ export default function SpacetimeExplorerPage() {
 
   const handleResetSimulation = useCallback(() => {
     setSimulationStatus('stopped');
-    const currentPreset = PRESET_SCENARIOS.realSolarSystem; 
-    setObjects(currentPreset.objects.map(obj => ({...obj, id: `${obj.id}_${Date.now()}` })));
+    setObjects([]); // Reset to an empty array
     setSelectedObjectId(null);
     setLiveSelectedObjectData(null);
     setIsDetailsPanelOpen(false);
@@ -112,18 +111,18 @@ export default function SpacetimeExplorerPage() {
   const handleObjectsCollidedAndMerged = useCallback((absorbedObjectId: string, absorberObjectId: string, absorbedObjectMass: number) => {
     setObjects(prevObjects => {
       const absorberObject = prevObjects.find(obj => obj.id === absorberObjectId);
-      
+
       if (!absorberObject) return prevObjects;
 
       const newAbsorberMass = (absorberObject.mass || 0) + absorbedObjectMass;
       const updatedObjects = prevObjects
         .filter(obj => obj.id !== absorbedObjectId)
-        .map(obj => 
-          obj.id === absorberObjectId 
-            ? { ...obj, mass: newAbsorberMass } 
+        .map(obj =>
+          obj.id === absorberObjectId
+            ? { ...obj, mass: newAbsorberMass }
             : obj
         );
-      
+
       // Update liveSelectedObjectData if the absorber was selected
       if (absorberObjectId === selectedObjectId) {
         const updatedAbsorber = updatedObjects.find(o => o.id === absorberObjectId);
@@ -137,13 +136,13 @@ export default function SpacetimeExplorerPage() {
       setLiveSelectedObjectData(null);
       setIsDetailsPanelOpen(false);
     }
-    
+
     // Find names from original objects array for toast, as it might be slightly delayed
     const originalAbsorber = objects.find(o => o.id === absorberObjectId);
     const originalAbsorbed = objects.find(o => o.id === absorbedObjectId);
-    toast({ 
-      title: "Cosmic Collision!", 
-      description: `${originalAbsorbed?.name || 'An object'} was absorbed by ${originalAbsorber?.name || 'another object'}. Mass transferred.` 
+    toast({
+      title: "Cosmic Collision!",
+      description: `${originalAbsorbed?.name || 'An object'} was absorbed by ${originalAbsorber?.name || 'another object'}. Mass transferred.`
     });
 
   }, [selectedObjectId, toast, objects]);
@@ -212,7 +211,7 @@ export default function SpacetimeExplorerPage() {
   return (
     <CustomizationProvider>
       <div className="flex flex-col h-screen bg-background text-foreground">
-        <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-background z-20"> 
+        <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-background z-20">
           <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="rounded-md border-2 border-primary hover:bg-primary/10 active:bg-primary/20">
@@ -220,7 +219,7 @@ export default function SpacetimeExplorerPage() {
                 <span className="sr-only">Open UI Customizer</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm p-0 flex flex-col overflow-y-auto z-50"> 
+            <SheetContent side="left" className="w-full max-w-xs sm:max-w-sm p-0 flex flex-col overflow-y-auto z-50">
               <UICustomizer />
             </SheetContent>
           </Sheet>
@@ -230,14 +229,14 @@ export default function SpacetimeExplorerPage() {
           </h1>
           <div className="w-10 h-10"> </div>
         </header>
-        
-        <main className="flex-1 overflow-hidden relative"> 
+
+        <main className="flex-1 overflow-hidden relative">
             <SpaceTimeCanvas
               objects={objects}
               selectedObjectId={selectedObjectId}
               simulationStatus={simulationStatus}
               simulationSpeed={simulationSpeed}
-              onObjectSelected={handleSelectObject} 
+              onObjectSelected={handleSelectObject}
               showTrajectories={showTrajectories}
               trajectoryLength={trajectoryLength}
               onObjectsCollidedAndMerged={handleObjectsCollidedAndMerged}
@@ -271,7 +270,7 @@ export default function SpacetimeExplorerPage() {
             onLoadState={handleLoadState}
             onLoadPreset={handleLoadPreset}
           />
-        
+
         <ObjectDetailsPanel
             selectedObject={displayObjectForDetailsPanel}
             isOpen={isDetailsPanelOpen}
@@ -281,5 +280,4 @@ export default function SpacetimeExplorerPage() {
     </CustomizationProvider>
   );
 }
-
     
