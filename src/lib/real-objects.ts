@@ -15,6 +15,15 @@ export interface RealObjectDefinition extends Omit<Partial<SceneObject>, 'id' | 
   baseVelocity?: Vector3; // Optional base velocity
   orbits?: 'Sun' | 'Earth'; // Hints for orbital placement
   realMassKg?: string; // Informational: Real mass in kg
+  // New fields based on the provided image
+  massEarthUnits?: string; // e.g., "0.815 M EARTH"
+  radiusEarthUnits?: string; // e.g., "0.95 R EARTH"
+  density?: string; // e.g., "5.24 g/cm³"
+  avgTemperature?: string; // e.g., "424 °C"
+  typicalSpeedKmS?: string; // e.g., "34.8 km/s" (for display, live speed is calculated)
+  rotationalPeriod?: string; // e.g., "243 day"
+  orbitalPeriodDisplay?: string; // e.g., "7.38 month" (for display)
+  isPlanet?: boolean; // To help with subtitles like "Planet orbiting..."
 }
 
 export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
@@ -29,6 +38,7 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     basePosition: { x: 0, y: 0, z: 0 },
     baseVelocity: { x: 0, y: 0, z: 0 },
     realMassKg: '1.989 × 10³⁰ kg',
+    isPlanet: false,
   },
   MERCURY: {
     name: 'Mercury',
@@ -40,6 +50,14 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     composition: 'Rocky, Metallic Core',
     orbits: 'Sun',
     realMassKg: '3.285 × 10²³ kg',
+    massEarthUnits: '0.055 M EARTH',
+    radiusEarthUnits: '0.383 R EARTH',
+    density: '5.43 g/cm³',
+    avgTemperature: '167 °C',
+    typicalSpeedKmS: '47.4 km/s',
+    rotationalPeriod: '58.6 days',
+    orbitalPeriodDisplay: '88 days',
+    isPlanet: true,
   },
   VENUS: {
     name: 'Venus',
@@ -51,6 +69,14 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     composition: 'Rocky, Dense Atmosphere (CO2)',
     orbits: 'Sun',
     realMassKg: '4.867 × 10²⁴ kg',
+    massEarthUnits: '0.815 M EARTH',
+    radiusEarthUnits: '0.949 R EARTH',
+    density: '5.24 g/cm³',
+    avgTemperature: '464 °C', // Updated to more common value
+    typicalSpeedKmS: '35.0 km/s', // Updated to more common value
+    rotationalPeriod: '243 days (retrograde)',
+    orbitalPeriodDisplay: '224.7 days', // Updated (approx 7.38 months)
+    isPlanet: true,
   },
   EARTH: {
     name: 'Earth',
@@ -62,17 +88,33 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     composition: 'Rocky, Silicates, Liquid Water Oceans',
     orbits: 'Sun',
     realMassKg: '5.972 × 10²⁴ kg',
+    massEarthUnits: '1 M EARTH',
+    radiusEarthUnits: '1 R EARTH',
+    density: '5.51 g/cm³',
+    avgTemperature: '15 °C',
+    typicalSpeedKmS: '29.8 km/s',
+    rotationalPeriod: '23.9 hours',
+    orbitalPeriodDisplay: '365.25 days',
+    isPlanet: true,
   },
   MOON: {
     name: 'Moon',
     type: 'orbiter',
-    mass: 1,
-    radius: 1.5,
+    mass: 1, // Sim mass
+    radius: 1.5, // Sim radius
     color: '#FFFFFF', // White
     description: "Earth's only natural satellite.",
     composition: 'Rocky, Silicates',
     orbits: 'Earth',
     realMassKg: '7.342 × 10²² kg',
+    massEarthUnits: '0.0123 M EARTH',
+    radiusEarthUnits: '0.273 R EARTH',
+    density: '3.34 g/cm³',
+    avgTemperature: '-20 °C (varies greatly)',
+    typicalSpeedKmS: '1.022 km/s (orbital)',
+    rotationalPeriod: '27.3 days (synchronous)',
+    orbitalPeriodDisplay: '27.3 days (around Earth)',
+    isPlanet: false,
   },
   MARS: {
     name: 'Mars',
@@ -84,6 +126,14 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     composition: 'Rocky, Iron Oxide Dust',
     orbits: 'Sun',
     realMassKg: '6.39 × 10²³ kg',
+    massEarthUnits: '0.107 M EARTH',
+    radiusEarthUnits: '0.532 R EARTH',
+    density: '3.93 g/cm³',
+    avgTemperature: '-65 °C',
+    typicalSpeedKmS: '24.1 km/s',
+    rotationalPeriod: '24.6 hours',
+    orbitalPeriodDisplay: '687 days',
+    isPlanet: true,
   },
   JUPITER: {
     name: 'Jupiter',
@@ -95,6 +145,14 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     composition: 'Gas Giant (Hydrogen, Helium)',
     orbits: 'Sun',
     realMassKg: '1.898 × 10²⁷ kg',
+    massEarthUnits: '317.8 M EARTH',
+    radiusEarthUnits: '11.21 R EARTH',
+    density: '1.33 g/cm³',
+    avgTemperature: '-145 °C (cloud tops)',
+    typicalSpeedKmS: '13.1 km/s',
+    rotationalPeriod: '9.9 hours',
+    orbitalPeriodDisplay: '11.86 years',
+    isPlanet: true,
   },
   SATURN: {
     name: 'Saturn',
@@ -106,6 +164,14 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     composition: 'Gas Giant (Hydrogen, Helium), Ice Rings',
     orbits: 'Sun',
     realMassKg: '5.683 × 10²⁶ kg',
+    massEarthUnits: '95.2 M EARTH',
+    radiusEarthUnits: '9.45 R EARTH',
+    density: '0.687 g/cm³',
+    avgTemperature: '-178 °C (cloud tops)',
+    typicalSpeedKmS: '9.7 km/s',
+    rotationalPeriod: '10.7 hours',
+    orbitalPeriodDisplay: '29.45 years',
+    isPlanet: true,
   },
   URANUS: {
     name: 'Uranus',
@@ -117,6 +183,14 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     composition: 'Ice Giant (Water, Methane, Ammonia Ices)',
     orbits: 'Sun',
     realMassKg: '8.681 × 10²⁵ kg',
+    massEarthUnits: '14.5 M EARTH',
+    radiusEarthUnits: '4.01 R EARTH',
+    density: '1.27 g/cm³',
+    avgTemperature: '-214 °C (cloud tops)',
+    typicalSpeedKmS: '6.8 km/s',
+    rotationalPeriod: '17.2 hours (retrograde)',
+    orbitalPeriodDisplay: '84 years',
+    isPlanet: true,
   },
   NEPTUNE: {
     name: 'Neptune',
@@ -128,6 +202,14 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     composition: 'Ice Giant (Water, Methane, Ammonia Ices)',
     orbits: 'Sun',
     realMassKg: '1.024 × 10²⁶ kg',
+    massEarthUnits: '17.1 M EARTH',
+    radiusEarthUnits: '3.88 R EARTH',
+    density: '1.64 g/cm³',
+    avgTemperature: '-218 °C (cloud tops)',
+    typicalSpeedKmS: '5.4 km/s',
+    rotationalPeriod: '16.1 hours',
+    orbitalPeriodDisplay: '164.8 years',
+    isPlanet: true,
   },
   ISS: {
     name: 'ISS',
@@ -139,6 +221,7 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     composition: 'Man-made structure',
     orbits: 'Earth',
     realMassKg: '~4.2 × 10⁵ kg',
+    isPlanet: false,
   },
   HALLEYS_COMET: {
     name: "Halley's Comet",
@@ -151,6 +234,7 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     basePosition: { x: GRID_SIZE / 3, y: 0, z: GRID_SIZE / 3 },
     baseVelocity: { x: -20, y: 5, z: -15 },
     realMassKg: '~2.2 × 10¹⁴ kg',
+    isPlanet: false,
   },
   CERES: {
     name: 'Ceres',
@@ -162,6 +246,7 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     composition: 'Rocky, Icy Mantle',
     orbits: 'Sun',
     realMassKg: '9.39 × 10²⁰ kg',
+    isPlanet: false, // It's a dwarf planet
   },
   BLACK_HOLE: {
     name: 'Black Hole',
@@ -174,6 +259,7 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     basePosition: { x: 0, y: 0, z: 0 },
     baseVelocity: { x: 0, y: 0, z: 0 },
     realMassKg: 'N/A (conceptual)',
+    isPlanet: false,
   },
   SAGITTARIUS_A_STAR: {
     name: 'Sagittarius A*',
@@ -186,7 +272,6 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     basePosition: { x: 0, y: 0, z: 0 },
     baseVelocity: { x: 0, y: 0, z: 0 },
     realMassKg: '~8.6 × 10³⁶ kg (4.3 million solar masses)',
+    isPlanet: false,
   },
 };
-
-    
