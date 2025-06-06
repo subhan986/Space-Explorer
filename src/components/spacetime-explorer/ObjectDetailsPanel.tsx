@@ -10,9 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { SceneObject } from '@/types/spacetime';
 import { REAL_OBJECT_DEFINITIONS } from '@/lib/real-objects';
 import { 
-  Orbit, Thermometer, Atom, Ruler, Sigma, Info, FileText, Scale, Gauge, RotateCw, Move, Layers, Blend, Paintbrush, CircleIcon, XIcon
+  Orbit, Thermometer, Atom, Ruler, Sigma, FileText, Scale, Gauge, RotateCw, Move, Layers, Blend, Paintbrush, CircleIcon, XIcon
 } from 'lucide-react';
-import Image from 'next/image';
 
 interface ObjectDetailsPanelProps {
   selectedObject: SceneObject | null | undefined;
@@ -63,30 +62,21 @@ const ObjectDetailsPanel: React.FC<ObjectDetailsPanelProps> = ({ selectedObject,
       <SheetContent 
         side="right" 
         className="w-full max-w-md p-0 flex flex-col bg-card text-card-foreground shadow-xl border-l border-border"
-        onInteractOutside={(e) => e.preventDefault()} // Prevents closing on outside click if desired
+        onInteractOutside={(e) => e.preventDefault()} 
       >
-        {/* Top Image Placeholder and Header */}
         <div className="p-4 border-b border-border">
-          <div 
-            className="w-full h-40 bg-muted rounded-md mb-3 flex items-center justify-center"
-            style={{backgroundImage: `url(https://placehold.co/600x400.png/222222/555555?text=${selectedObject.name.charAt(0)})`, backgroundSize:'cover', backgroundPosition: 'center'}}
-            data-ai-hint="celestial body texture"
-          >
-            {/* Future: Could use next/image if specific images were available per object */}
-             {/* <span className="text-4xl font-bold text-muted-foreground">{selectedObject.name.charAt(0)}</span> */}
-          </div>
-          <div className="flex justify-between items-center">
+          {/* Image placeholder removed */}
+          <div className="flex justify-between items-start">
             <div>
               <h2 className="text-2xl font-bold text-foreground">{selectedObject.name}</h2>
               <p className="text-sm text-muted-foreground">{subtitle}</p>
             </div>
             <SheetClose asChild>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground -mr-2 -mt-1">
                 <XIcon className="h-5 w-5" />
               </Button>
             </SheetClose>
           </div>
-          {/* Placeholder for header icon buttons from the image */}
         </div>
 
         <Tabs defaultValue="overview" className="flex-1 flex flex-col min-h-0">
@@ -167,19 +157,23 @@ const ObjectDetailsPanel: React.FC<ObjectDetailsPanelProps> = ({ selectedObject,
 
             <TabsContent value="surface" className="p-4 mt-0">
               <h3 className="text-lg font-semibold mb-2 text-primary">Surface Information</h3>
-              <p className="text-sm text-muted-foreground">Detailed surface characteristics will be available here.</p>
-              {definition?.description && (
-                <div className="mt-2 text-sm bg-muted/30 p-3 rounded-md border border-border/50">
-                    <p className="font-semibold mb-1">Description:</p>
-                    {definition.description}
+              {definition?.description ? (
+                <div className="text-sm bg-muted/30 p-3 rounded-md border border-border/50">
+                    <p className="font-semibold mb-1 text-foreground">Description:</p>
+                    <p className="text-muted-foreground">{definition.description}</p>
                 </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No detailed surface description available.</p>
               )}
             </TabsContent>
 
             <TabsContent value="composition" className="p-4 mt-0">
               <h3 className="text-lg font-semibold mb-2 text-primary">Composition Details</h3>
               {definition?.composition ? (
-                <p className="text-sm bg-muted/30 p-3 rounded-md border border-border/50">{definition.composition}</p>
+                <div className="text-sm bg-muted/30 p-3 rounded-md border border-border/50">
+                     <p className="font-semibold mb-1 text-foreground">Primary Composition:</p>
+                     <p className="text-muted-foreground">{definition.composition}</p>
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground">No detailed composition data available.</p>
               )}
@@ -189,12 +183,10 @@ const ObjectDetailsPanel: React.FC<ObjectDetailsPanelProps> = ({ selectedObject,
               <h3 className="text-lg font-semibold mb-2 text-primary">Visual Parameters</h3>
               <DetailRow icon={<Paintbrush />} label="Color (Hex)" value={selectedObject.color.toUpperCase()} />
               <DetailRow icon={<Ruler />} label="Visual Radius" value={selectedObject.radius.toFixed(1)} unit="sim units" />
-              {/* Future: Add texture information if applicable */}
             </TabsContent>
           </ScrollArea>
         </Tabs>
         
-        {/* Removed SheetFooter for a cleaner look consistent with the image */}
       </SheetContent>
     </Sheet>
   );

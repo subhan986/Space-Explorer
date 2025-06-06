@@ -5,7 +5,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import ControlPanel from '@/components/spacetime-explorer/ControlPanel';
-import type { SceneObject, LightingMode, SavedSimulationState } from '@/types/spacetime';
+import type { SceneObject, LightingMode, SavedSimulationState, Vector3 } from '@/types/spacetime';
 import { PRESET_SCENARIOS } from '@/lib/preset-scenarios';
 import { DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
 import { Palette } from 'lucide-react';
@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import UICustomizer from '@/components/ui-customizer/UICustomizer';
 import { CustomizationProvider } from '@/contexts/CustomizationContext';
-import ObjectDetailsPanel from '@/components/spacetime-explorer/ObjectDetailsPanel'; // New Import
+import ObjectDetailsPanel from '@/components/spacetime-explorer/ObjectDetailsPanel';
 
 const SpaceTimeCanvas = dynamic(() => import('@/components/spacetime-explorer/SpaceTimeCanvas'), {
   ssr: false,
@@ -30,7 +30,7 @@ const SpaceTimeCanvas = dynamic(() => import('@/components/spacetime-explorer/Sp
 const LOCAL_STORAGE_SAVE_KEY = 'spacetimeExplorerSaveState';
 
 export default function SpacetimeExplorerPage() {
-  const [objects, setObjects] = useState<SceneObject[]>([]); // Start with an empty array
+  const [objects, setObjects] = useState<SceneObject[]>([]);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [simulationStatus, setSimulationStatus] = useState<'stopped' | 'running' | 'paused'>('stopped');
   const [simulationSpeed, setSimulationSpeed] = useState<number>(DEFAULT_SIMULATION_SPEED);
@@ -38,6 +38,7 @@ export default function SpacetimeExplorerPage() {
   const [trajectoryLength, setTrajectoryLength] = useState<number>(DEFAULT_TRAJECTORY_LENGTH);
   const [showShadows, setShowShadows] = useState<boolean>(true);
   const [lightingMode, setLightingMode] = useState<LightingMode>("Realistic Solar");
+  const [currentSimulatedDate, setCurrentSimulatedDate] = useState<Date>(new Date());
   const { toast } = useToast();
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
 
@@ -49,10 +50,9 @@ export default function SpacetimeExplorerPage() {
   useEffect(() => {
     if (selectedObjectId && selectedObjectData) {
       setIsDetailsPanelOpen(true);
-      if (simulationStatus !== 'running') { // If paused or stopped, use data from main 'objects' array
+      if (simulationStatus !== 'running') {
         setLiveSelectedObjectData(selectedObjectData);
       }
-      // If running, liveSelectedObjectData will be updated by onSelectedObjectUpdate from SpaceTimeCanvas
     } else {
       setIsDetailsPanelOpen(false);
       setLiveSelectedObjectData(null);
@@ -61,11 +61,11 @@ export default function SpacetimeExplorerPage() {
 
   const handleDetailsPanelClose = () => {
     setIsDetailsPanelOpen(false);
-    setSelectedObjectId(null);
+    // Do NOT clear selectedObjectId here, so editor can remain open
   };
 
   const handleSelectedObjectUpdate = useCallback((updatedState: SceneObject) => {
-    if (updatedState.id === selectedObjectId) { // Ensure the update is for the currently selected object
+    if (updatedState.id === selectedObjectId) {
         setLiveSelectedObjectData(updatedState);
     }
   }, [selectedObjectId]);
@@ -77,7 +77,6 @@ export default function SpacetimeExplorerPage() {
 
   const handleUpdateObject = useCallback((updatedObject: SceneObject) => {
     setObjects(prev => prev.map(obj => obj.id === updatedObject.id ? updatedObject : obj));
-    // If the updated object is the selected one, also update liveSelectedObjectData if not running
     if (updatedObject.id === selectedObjectId && simulationStatus !== 'running') {
       setLiveSelectedObjectData(updatedObject);
     }
@@ -86,7 +85,7 @@ export default function SpacetimeExplorerPage() {
   const handleRemoveObject = useCallback((objectId: string) => {
     setObjects(prev => prev.filter(obj => obj.id !== objectId));
     if (selectedObjectId === objectId) {
-      setSelectedObjectId(null);
+      setSelectedObjectId(null); // This will close the details panel and clear editor
       setLiveSelectedObjectData(null);
       setIsDetailsPanelOpen(false);
     }
@@ -94,26 +93,35 @@ export default function SpacetimeExplorerPage() {
 
   const handleSelectObject = useCallback((objectId: string | null) => {
     setSelectedObjectId(objectId);
-    if (!objectId) {
+    if (!objectId) { // If explicitly deselecting (e.g. by clicking empty space or clear selection)
       setIsDetailsPanelOpen(false);
       setLiveSelectedObjectData(null);
     }
+    // If selecting an object, the useEffect for selectedObjectId will handle opening the panel
   }, []);
 
   const handleResetSimulation = useCallback(() => {
     setSimulationStatus('stopped');
-    setObjects([]); // Reset to an empty array
+    setObjects([]);
     setSelectedObjectId(null);
     setLiveSelectedObjectData(null);
     setIsDetailsPanelOpen(false);
+    setCurrentSimulatedDate(new Date());
   }, []);
+
+  const handleSimulatedTimeDeltaUpdate = useCallback((simDaysDelta: number) => {
+    setCurrentSimulatedDate(prevDate => {
+      const newDate = new Date(prevDate);
+      newDate.setDate(newDate.getDate() + simDaysDelta);
+      return newDate;
+    });
+  }, []);
+
 
   const handleObjectsCollidedAndMerged = useCallback((absorbedObjectId: string, absorberObjectId: string, absorbedObjectMass: number) => {
     setObjects(prevObjects => {
       const absorberObject = prevObjects.find(obj => obj.id === absorberObjectId);
-
       if (!absorberObject) return prevObjects;
-
       const newAbsorberMass = (absorberObject.mass || 0) + absorbedObjectMass;
       const updatedObjects = prevObjects
         .filter(obj => obj.id !== absorbedObjectId)
@@ -122,8 +130,6 @@ export default function SpacetimeExplorerPage() {
             ? { ...obj, mass: newAbsorberMass }
             : obj
         );
-
-      // Update liveSelectedObjectData if the absorber was selected
       if (absorberObjectId === selectedObjectId) {
         const updatedAbsorber = updatedObjects.find(o => o.id === absorberObjectId);
         if (updatedAbsorber) setLiveSelectedObjectData(updatedAbsorber);
@@ -136,7 +142,7 @@ export default function SpacetimeExplorerPage() {
       setLiveSelectedObjectData(null);
       setIsDetailsPanelOpen(false);
     }
-
+    
     // Find names from original objects array for toast, as it might be slightly delayed
     const originalAbsorber = objects.find(o => o.id === absorberObjectId);
     const originalAbsorbed = objects.find(o => o.id === absorbedObjectId);
@@ -156,6 +162,7 @@ export default function SpacetimeExplorerPage() {
         trajectoryLength,
         lightingMode,
         showShadows,
+        simulatedDate: currentSimulatedDate.toISOString(),
       };
       localStorage.setItem(LOCAL_STORAGE_SAVE_KEY, JSON.stringify(stateToSave));
       toast({ title: "Simulation Saved", description: "Current state saved to local storage." });
@@ -163,7 +170,7 @@ export default function SpacetimeExplorerPage() {
       console.error("Error saving state:", error);
       toast({ title: "Save Failed", description: "Could not save simulation state.", variant: "destructive" });
     }
-  }, [objects, simulationSpeed, showTrajectories, trajectoryLength, lightingMode, showShadows, toast]);
+  }, [objects, simulationSpeed, showTrajectories, trajectoryLength, lightingMode, showShadows, currentSimulatedDate, toast]);
 
   const handleLoadState = useCallback(() => {
     try {
@@ -176,6 +183,7 @@ export default function SpacetimeExplorerPage() {
         setTrajectoryLength(savedState.trajectoryLength);
         setLightingMode(savedState.lightingMode);
         setShowShadows(savedState.showShadows);
+        setCurrentSimulatedDate(savedState.simulatedDate ? new Date(savedState.simulatedDate) : new Date());
         setSimulationStatus('stopped');
         setSelectedObjectId(null);
         setLiveSelectedObjectData(null);
@@ -193,11 +201,12 @@ export default function SpacetimeExplorerPage() {
   const handleLoadPreset = useCallback((presetKey: string) => {
     const preset = PRESET_SCENARIOS[presetKey];
     if (preset) {
-      setObjects(preset.objects.map(obj => ({...obj, id: `${obj.id}_${Date.now()}` })));
+      setObjects(preset.objects.map(obj => ({...obj, id: `${obj.id}_${Date.now()}_${Math.random().toString(36).substring(2,7)}` })));
       setSimulationStatus('stopped');
       setSelectedObjectId(null);
       setLiveSelectedObjectData(null);
       setIsDetailsPanelOpen(false);
+      setCurrentSimulatedDate(new Date());
       toast({ title: "Preset Loaded", description: `"${preset.name}" scenario is ready.` });
     } else {
       toast({ title: "Preset Error", description: "Could not load the selected preset.", variant: "destructive" });
@@ -227,7 +236,7 @@ export default function SpacetimeExplorerPage() {
           <h1 className="text-md md:text-lg font-semibold text-foreground flex-1 text-center truncate px-2">
             Spacetime Explorer
           </h1>
-          <div className="w-10 h-10"> </div>
+          <div className="w-10 h-10"> {/* Spacer to balance the left icon button */} </div>
         </header>
 
         <main className="flex-1 overflow-hidden relative">
@@ -243,6 +252,7 @@ export default function SpacetimeExplorerPage() {
               showShadows={showShadows}
               lightingMode={lightingMode}
               onSelectedObjectUpdate={handleSelectedObjectUpdate}
+              onSimulatedTimeDeltaUpdate={handleSimulatedTimeDeltaUpdate}
             />
         </main>
 
@@ -255,6 +265,7 @@ export default function SpacetimeExplorerPage() {
             trajectoryLength={trajectoryLength}
             showShadows={showShadows}
             lightingMode={lightingMode}
+            currentSimulatedDate={currentSimulatedDate}
             onAddObject={handleAddObject}
             onUpdateObject={handleUpdateObject}
             onRemoveObject={handleRemoveObject}
@@ -280,4 +291,3 @@ export default function SpacetimeExplorerPage() {
     </CustomizationProvider>
   );
 }
-    
