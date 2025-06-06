@@ -76,14 +76,18 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   
   const [forceDisplayData, setForceDisplayData] = useState<{ id: string; name: string; force: number | undefined }[]>([]);
 
-  // Refs for camera zoom animation
   const isZoomingRef = useRef(false);
   const zoomTargetPositionRef = useRef(new THREE.Vector3());
   const zoomTargetLookAtRef = useRef(new THREE.Vector3());
-  const zoomToObjectRadiusRef = useRef(1); // Store radius of target for zoom distance calculation
+  const zoomToObjectRadiusRef = useRef(1); 
 
   const raycasterRef = useRef(new THREE.Raycaster());
   const mouseRef = useRef(new THREE.Vector2());
+
+  // Refs for keyboard camera movement
+  const keysPressedRef = useRef<{ [key: string]: boolean }>({});
+  const cameraMoveSpeed = 100.0;
+
 
   const isValidVector = useCallback((v: {x:number, y:number, z:number} | undefined): v is {x:number, y:number, z:number} => {
     return !!v && isFinite(v.x) && isFinite(v.y) && isFinite(v.z);
@@ -316,6 +320,51 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     gridPlaneRef.current.geometry.computeVertexNormals();
   }, [isValidVector]);
 
+  const handleKeyboardCameraMovement = useCallback((deltaTime: number) => {
+    if (!cameraRef.current || !controlsRef.current) return;
+
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    const moveDistance = cameraMoveSpeed * deltaTime * simulationSpeed; // Scale by simulationSpeed for consistent feel
+
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    const right = new THREE.Vector3().crossVectors(camera.up, forward).normalize(); // Corrected: camera.up X forward
+
+    let moved = false;
+
+    if (keysPressedRef.current['w']) {
+      camera.position.addScaledVector(forward, moveDistance);
+      moved = true;
+    }
+    if (keysPressedRef.current['s']) {
+      camera.position.addScaledVector(forward, -moveDistance);
+      moved = true;
+    }
+    if (keysPressedRef.current['a']) {
+      // To move left, we move along the negative 'right' vector
+      camera.position.addScaledVector(right.clone().negate(), moveDistance);
+      moved = true;
+    }
+    if (keysPressedRef.current['d']) {
+      camera.position.addScaledVector(right, moveDistance);
+      moved = true;
+    }
+    if (keysPressedRef.current['q']) { // Up
+      camera.position.y += moveDistance;
+      moved = true;
+    }
+    if (keysPressedRef.current['e']) { // Down
+      camera.position.y -= moveDistance;
+      moved = true;
+    }
+
+    if (moved) {
+      // Update controls target to be in front of the camera
+      controls.target.copy(camera.position).addScaledVector(forward, 10); // Target a point 10 units in front
+    }
+  }, [simulationSpeed]);
+
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -407,7 +456,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
 
     const handleDoubleClick = (event: MouseEvent) => {
-      if (!cameraRef.current || !sceneRef.current || !selectedObjectId || !mountRef.current) return;
+      if (!cameraRef.current || !sceneRef.current || !selectedObjectId || !mountRef.current || !onObjectSelected) return;
     
       const rect = mountRef.current.getBoundingClientRect();
       mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -418,28 +467,40 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     
       if (intersects.length > 0) {
         const clickedObjectMesh = intersects[0].object as THREE.Mesh;
-        const clickedObjectId = clickedObjectMesh.name; // Assuming mesh name is the object ID
+        const clickedObjectId = clickedObjectMesh.name; 
     
-        if (clickedObjectId === selectedObjectId) {
+        if (clickedObjectId === selectedObjectId) { // Check if already selected
           const simObj = simulationObjectsRef.current.get(selectedObjectId);
           if (simObj && isValidVector(simObj.threePosition)) {
             isZoomingRef.current = true;
             zoomTargetLookAtRef.current.copy(simObj.threePosition);
             zoomToObjectRadiusRef.current = simObj.radius;
             
-            // Calculate target camera position: maintain direction, move closer
             const direction = new THREE.Vector3();
-            cameraRef.current.getWorldDirection(direction); // Get current camera view direction
-            const distance = Math.max(simObj.radius * 3, 50); // Zoom distance based on radius, min 50 units
+            cameraRef.current.getWorldDirection(direction); 
+            const distance = Math.max(simObj.radius * 5, 100); // Adjusted zoom distance
             
             const offsetDirection = cameraRef.current.position.clone().sub(simObj.threePosition).normalize();
             zoomTargetPositionRef.current.copy(simObj.threePosition).add(offsetDirection.multiplyScalar(distance));
           }
+        } else {
+           onObjectSelected(clickedObjectId); // Select if not already selected
         }
       }
     };
-
     currentMount.addEventListener('dblclick', handleDoubleClick);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      keysPressedRef.current[event.key.toLowerCase()] = true;
+      if (['w', 'a', 's', 'd'].includes(event.key.toLowerCase())) {
+        event.preventDefault();
+      }
+    };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      keysPressedRef.current[event.key.toLowerCase()] = false;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
 
 
     const resizeObserver = new ResizeObserver(() => {
@@ -462,6 +523,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     return () => {
       currentMount.removeEventListener('dblclick', handleDoubleClick);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
       resizeObserver.unobserve(currentMount);
       if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current);
       if (currentMount && rendererRef.current?.domElement && currentMount.contains(rendererRef.current.domElement)) currentMount.removeChild(rendererRef.current.domElement);
@@ -497,7 +560,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       sceneRef.current?.clear();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+  }, [onObjectSelected]); 
 
   useEffect(() => {
     if (gridPlaneRef.current) {
@@ -567,6 +630,13 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     const animate = (timestamp: number) => {
         animationFrameIdRef.current = requestAnimationFrame(animate);
         
+        const rawDeltaTime = lastTimestamp > 0 ? (timestamp - lastTimestamp) / 1000 : 1/60;
+        lastTimestamp = timestamp;
+        const effectiveDeltaTimeForPhysics = Math.min(rawDeltaTime, 1/30);
+        const effectiveDeltaTimeForVisuals = rawDeltaTime; 
+
+        handleKeyboardCameraMovement(effectiveDeltaTimeForVisuals);
+
         if (isZoomingRef.current && controlsRef.current && cameraRef.current) {
           const lerpFactor = 0.07;
           cameraRef.current.position.lerp(zoomTargetPositionRef.current, lerpFactor);
@@ -580,18 +650,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           }
         } else if (controlsRef.current && selectedObjectId && !isZoomingRef.current) {
           const selectedSimObj = simulationObjectsRef.current.get(selectedObjectId);
-          if (selectedSimObj && isValidVector(selectedSimObj.threePosition)) {
+          if (selectedSimObj && isValidVector(selectedSimObj.threePosition) && !Object.values(keysPressedRef.current).some(pressed => pressed)) { // Only follow if not moving with WASD
             controlsRef.current.target.lerp(selectedSimObj.threePosition, 0.1); 
           }
         }
         controls.update();
 
         if (simulationStatus === 'running') {
-            const rawDeltaTime = lastTimestamp > 0 ? (timestamp - lastTimestamp) / 1000 : 1/60;
-            lastTimestamp = timestamp;
-            // Cap the effective deltaTime for physics to prevent instability from large jumps
-            const effectiveDeltaTime = Math.min(rawDeltaTime, 1/30); // Max step of ~33ms (30 FPS)
-            const dt = simulationSpeed * effectiveDeltaTime;
+            const dt = simulationSpeed * effectiveDeltaTimeForPhysics;
             
             updatePhysics(dt);
             updateTrajectories();
@@ -609,7 +675,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             }));
             setForceDisplayData(newForceData);
         } else {
-          lastTimestamp = 0; 
+          // lastTimestamp = 0; // Reset lastTimestamp if paused or stopped so deltaTime is fresh on resume
            const newForceData = Array.from(simulationObjectsRef.current.values()).map(simObj => ({
               id: simObj.id, name: simObj.name, force: simulationStatus === 'stopped' ? 0 : simObj.netForceMagnitude,
             }));
@@ -620,7 +686,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     };
     animate(0); 
     return () => { if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current); };
-  }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid, selectedObjectId, isValidVector]);
+  }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid, selectedObjectId, isValidVector, handleKeyboardCameraMovement]);
 
 
   useEffect(() => {
@@ -910,7 +976,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
   useEffect(() => {
     if (simulationStatus === 'stopped') {
-      isZoomingRef.current = false; // Stop any active zoom animation when simulation stops
+      isZoomingRef.current = false; 
       trajectoriesRef.current.forEach((line) => {
         if (line.parent) sceneRef.current?.remove(line);
         line.geometry.dispose();
@@ -1056,7 +1122,3 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
-
-    
-
-    
