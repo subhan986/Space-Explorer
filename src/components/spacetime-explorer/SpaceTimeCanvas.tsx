@@ -33,7 +33,6 @@ interface SimulationObjectInternal {
   radius: number;
   color: string;
   name: string;
-  // netForceMagnitude?: number; // Removed
 }
 
 interface MappedObject {
@@ -99,7 +98,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     
     simObjectsArray.forEach(obj => {
       if (!isValidVector(obj.threePosition) || !isValidVector(obj.threeVelocity)) {
-        // obj.netForceMagnitude = 0; // Removed
         return;
       }
 
@@ -136,7 +134,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         totalForce.copy(testParticleForce);
       }
       
-      // obj.netForceMagnitude = totalForce.length(); // Removed
       let acceleration = new THREE.Vector3(0,0,0);
       if (obj.mass > 0) {
         acceleration = totalForce.clone().divideScalar(obj.mass);
@@ -155,7 +152,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             testParticleForce.add(forceOnParticle);
         });
         acceleration.copy(testParticleForce); 
-        // obj.netForceMagnitude = testParticleForce.length(); // Removed
       }
 
 
@@ -602,8 +598,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     }
     
     objectsMapRef.current.forEach(mappedObj => {
-        const simObj = simulationObjectsRef.current.get(mappedObj.mainMesh.name); 
-        if (simObj && (simObj.name === "Sun")) { 
+        const simObjInternal = simulationObjectsRef.current.get(mappedObj.mainMesh.name); 
+        if (simObjInternal && (simObjInternal.name === "Sun")) { 
             mappedObj.mainMesh.castShadow = false; 
         } else {
             const dirLightCastsShadows = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
@@ -661,24 +657,24 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             deformGrid();
 
             objectsMapRef.current.forEach((mappedObj, objectId) => {
-              const simObj = simulationObjectsRef.current.get(objectId);
-              if (simObj && (mappedObj.objectName === 'Black Hole' || mappedObj.objectName === 'Sagittarius A*') && mappedObj.accretionDiskMesh) {
+              const simObjInternal = simulationObjectsRef.current.get(objectId);
+              if (simObjInternal && (mappedObj.objectName === 'Black Hole' || mappedObj.objectName === 'Sagittarius A*') && mappedObj.accretionDiskMesh) {
                 mappedObj.accretionDiskMesh.rotation.y += 0.002 * simulationSpeed; 
               }
             });
             
             if (onSelectedObjectUpdate && selectedObjectId) {
-              const simObj = simulationObjectsRef.current.get(selectedObjectId);
-              if (simObj) {
+              const simObjInternal = simulationObjectsRef.current.get(selectedObjectId);
+              if (simObjInternal) {
                 onSelectedObjectUpdate({
-                  id: simObj.id,
-                  name: simObj.name,
-                  type: simObj.type,
-                  mass: simObj.mass,
-                  radius: simObj.radius,
-                  color: simObj.color,
-                  position: { x: simObj.threePosition.x, y: simObj.threePosition.y, z: simObj.threePosition.z },
-                  velocity: { x: simObj.threeVelocity.x, y: simObj.threeVelocity.y, z: simObj.threeVelocity.z },
+                  id: simObjInternal.id,
+                  name: simObjInternal.name,
+                  type: simObjInternal.type,
+                  mass: simObjInternal.mass,
+                  radius: simObjInternal.radius,
+                  color: simObjInternal.color,
+                  position: { x: simObjInternal.threePosition.x, y: simObjInternal.threePosition.y, z: simObjInternal.threePosition.z },
+                  velocity: { x: simObjInternal.threeVelocity.x, y: simObjInternal.threeVelocity.y, z: simObjInternal.threeVelocity.z },
                 });
               }
             }
@@ -699,7 +695,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     objects.forEach(objData => {
       currentPropIds.add(objData.id);
-      let simObj = newSimMap.get(objData.id);
+      let simObjInternal = newSimMap.get(objData.id);
       let mappedObj = objectsMapRef.current.get(objData.id);
       let threeMesh = mappedObj?.mainMesh;
 
@@ -708,15 +704,15 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       const propRadius = (objData.radius && objData.radius > 0.01) ? objData.radius : 0.01;
       const propMass = (typeof objData.mass === 'number' && isFinite(objData.mass)) ? objData.mass : 0;
 
-      if (!simObj || !threeMesh) { 
+      if (!simObjInternal || !threeMesh) { 
         const newThreePosition = new THREE.Vector3(propPos.x, propPos.y, propPos.z);
         const newThreeVelocity = new THREE.Vector3(propVel.x, propVel.y, propVel.z);
-        simObj = {
+        simObjInternal = {
           id: objData.id, type: objData.type, mass: propMass,
           threePosition: newThreePosition, threeVelocity: newThreeVelocity,
           radius: propRadius, color: objData.color, name: objData.name,
         };
-        newSimMap.set(objData.id, simObj);
+        newSimMap.set(objData.id, simObjInternal);
 
         if (mappedObj) { 
             if (mappedObj.nameLabel) mappedObj.mainMesh.remove(mappedObj.nameLabel);
@@ -733,22 +729,22 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             objectsMapRef.current.delete(objData.id);
         }
 
-        const geometry = new THREE.SphereGeometry(simObj.radius, 32, 32);
+        const geometry = new THREE.SphereGeometry(simObjInternal.radius, 32, 32);
         const material = new THREE.MeshStandardMaterial({
-             color: new THREE.Color(simObj.color),
+             color: new THREE.Color(simObjInternal.color),
         });
         material.map = null; 
         material.emissiveMap = null;
         
-        if (simObj.name === "Sun") {
-            material.emissive.set(new THREE.Color(simObj.color));
+        if (simObjInternal.name === "Sun") {
+            material.emissive.set(new THREE.Color(simObjInternal.color));
             material.emissiveIntensity = 1.0; 
             material.metalness = 0.0;
             material.roughness = 0.8;
-        } else if (simObj.name === "Earth" || simObj.name === "Moon" || simObj.name === "Jupiter" || simObj.name === "Ceres" || simObj.name === "Mercury" || simObj.name === "Venus" || simObj.name === "Mars" || simObj.name === "Saturn" || simObj.name === "Uranus" || simObj.name === "Neptune") {
+        } else if (simObjInternal.name === "Earth" || simObjInternal.name === "Moon" || simObjInternal.name === "Jupiter" || simObjInternal.name === "Ceres" || simObjInternal.name === "Mercury" || simObjInternal.name === "Venus" || simObjInternal.name === "Mars" || simObjInternal.name === "Saturn" || simObjInternal.name === "Uranus" || simObjInternal.name === "Neptune") {
             material.metalness = 0.1;
             material.roughness = 0.7;
-        } else if (simObj.name === "Black Hole" || simObj.name === "Sagittarius A*") {
+        } else if (simObjInternal.name === "Black Hole" || simObjInternal.name === "Sagittarius A*") {
             material.color.set(0x000000); 
             material.metalness = 0.0;
             material.roughness = 0.5;
@@ -761,10 +757,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         threeMesh.name = objData.id; 
         
         const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
-        if (simObj.name === "Sun") {
+        if (simObjInternal.name === "Sun") {
             threeMesh.castShadow = false;
             threeMesh.receiveShadow = false;
-        } else if (simObj.name === "Black Hole" || simObj.name === "Sagittarius A*") {
+        } else if (simObjInternal.name === "Black Hole" || simObjInternal.name === "Sagittarius A*") {
             threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode; 
             threeMesh.receiveShadow = false; 
         } else { 
@@ -779,15 +775,15 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
         const labelDiv = document.createElement('div');
         labelDiv.className = 'object-name-label';
-        labelDiv.textContent = simObj.name;
+        labelDiv.textContent = simObjInternal.name;
         const nameLabel = new CSS2DObject(labelDiv);
-        nameLabel.position.set(0, simObj.radius * 1.5 + 5, 0); 
+        nameLabel.position.set(0, simObjInternal.radius * 1.5 + 5, 0); 
         threeMesh.add(nameLabel);
         newMappedObject.nameLabel = nameLabel;
 
         if (objData.name === 'Black Hole' || objData.name === 'Sagittarius A*') {
-            const diskInnerRadius = simObj.radius * 1.5; 
-            const diskOuterRadius = simObj.radius * 5;   
+            const diskInnerRadius = simObjInternal.radius * 1.5; 
+            const diskOuterRadius = simObjInternal.radius * 5;   
             const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
             const diskMaterial = new THREE.MeshBasicMaterial({ 
                 color: 0xFFE066, 
@@ -810,29 +806,29 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         let corePhysicsStateReset = false; 
         let visualReset = false; 
 
-        if (simObj.name !== objData.name) {
-            simObj.name = objData.name;
+        if (simObjInternal.name !== objData.name) {
+            simObjInternal.name = objData.name;
             if (mappedObj.nameLabel) {
-                mappedObj.nameLabel.element.textContent = simObj.name;
+                mappedObj.nameLabel.element.textContent = simObjInternal.name;
             }
         }
         mappedObj.objectName = objData.name; 
-        simObj.type = objData.type;
+        simObjInternal.type = objData.type;
 
-        if (simObj.radius !== propRadius) {
-           simObj.radius = propRadius;
+        if (simObjInternal.radius !== propRadius) {
+           simObjInternal.radius = propRadius;
            threeMesh.geometry.dispose(); 
-           threeMesh.geometry = new THREE.SphereGeometry(simObj.radius, 32, 32);
+           threeMesh.geometry = new THREE.SphereGeometry(simObjInternal.radius, 32, 32);
            visualReset = true;
 
            if (mappedObj.nameLabel) { 
-                mappedObj.nameLabel.position.set(0, simObj.radius * 1.5 + 5, 0);
+                mappedObj.nameLabel.position.set(0, simObjInternal.radius * 1.5 + 5, 0);
            }
 
            if ((mappedObj.objectName === 'Black Hole' || mappedObj.objectName === 'Sagittarius A*') && mappedObj.accretionDiskMesh) {
              mappedObj.accretionDiskMesh.geometry.dispose();
-             const diskInnerRadius = simObj.radius * 1.5;
-             const diskOuterRadius = simObj.radius * 5; 
+             const diskInnerRadius = simObjInternal.radius * 1.5;
+             const diskOuterRadius = simObjInternal.radius * 5; 
              mappedObj.accretionDiskMesh.geometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
            }
         }
@@ -841,28 +837,28 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         material.map = null; 
         material.emissiveMap = null; 
                 
-        if (simObj.color !== objData.color || material.color.getHexString() !== new THREE.Color(objData.color).getHexString().substring(1)) { 
+        if (simObjInternal.color !== objData.color || material.color.getHexString() !== new THREE.Color(objData.color).getHexString().substring(1)) { 
              material.color.set(new THREE.Color(objData.color));
              visualReset = true; 
         }
-        simObj.color = objData.color; 
+        simObjInternal.color = objData.color; 
 
         const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
-        if (simObj.name === "Sun") {
-            material.emissive.set(new THREE.Color(simObj.color)); 
+        if (simObjInternal.name === "Sun") {
+            material.emissive.set(new THREE.Color(simObjInternal.color)); 
             material.emissiveIntensity = 1.0;
             material.metalness = 0.0;
             material.roughness = 0.8;
             threeMesh.castShadow = false;
             threeMesh.receiveShadow = false;
-        } else if (simObj.name === "Earth" || simObj.name === "Moon" || simObj.name === "Jupiter" || simObj.name === "Ceres" || simObj.name === "Mercury" || simObj.name === "Venus" || simObj.name === "Mars" || simObj.name === "Saturn" || simObj.name === "Uranus" || simObj.name === "Neptune") {
+        } else if (simObjInternal.name === "Earth" || simObjInternal.name === "Moon" || simObjInternal.name === "Jupiter" || simObjInternal.name === "Ceres" || simObjInternal.name === "Mercury" || simObjInternal.name === "Venus" || simObjInternal.name === "Mars" || simObjInternal.name === "Saturn" || simObjInternal.name === "Uranus" || simObjInternal.name === "Neptune") {
             material.metalness = 0.1;
             material.roughness = 0.7;
             material.emissive?.set(0x000000); 
             material.emissiveIntensity = 0;
             threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode;
             threeMesh.receiveShadow = true;
-        } else if (simObj.name === "Black Hole" || simObj.name === "Sagittarius A*") {
+        } else if (simObjInternal.name === "Black Hole" || simObjInternal.name === "Sagittarius A*") {
             material.color.set(0x000000); 
             material.metalness = 0.0;
             material.roughness = 0.5;
@@ -883,8 +879,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         
         if (mappedObj.objectName === 'Black Hole' || mappedObj.objectName === 'Sagittarius A*') {
             if (!mappedObj.accretionDiskMesh) { 
-                const diskInnerRadius = simObj.radius * 1.5;
-                const diskOuterRadius = simObj.radius * 5;
+                const diskInnerRadius = simObjInternal.radius * 1.5;
+                const diskOuterRadius = simObjInternal.radius * 5;
                 const diskGeometry = new THREE.RingGeometry(diskInnerRadius, diskOuterRadius, 64);
                 const diskMaterial = new THREE.MeshBasicMaterial({ 
                     color: 0xFFE066, 
@@ -915,18 +911,18 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             }
         }
 
-        if (simulationStatus !== 'running' || simObj.mass !== propMass) {
-            simObj.mass = propMass; 
-            if (simulationStatus !== 'running' || (simObj.mass !== propMass && propMass !== undefined)) { 
-                if (isValidVector(propPos)) simObj.threePosition.set(propPos.x, propPos.y, propPos.z);
-                if (isValidVector(propVel)) simObj.threeVelocity.set(propVel.x, propVel.y, propVel.z);
-                if (isValidVector(simObj.threePosition)) threeMesh.position.copy(simObj.threePosition);
+        if (simulationStatus !== 'running' || simObjInternal.mass !== propMass) {
+            simObjInternal.mass = propMass; 
+            if (simulationStatus !== 'running' || (simObjInternal.mass !== propMass && propMass !== undefined)) { 
+                if (isValidVector(propPos)) simObjInternal.threePosition.set(propPos.x, propPos.y, propPos.z);
+                if (isValidVector(propVel)) simObjInternal.threeVelocity.set(propVel.x, propVel.y, propVel.z);
+                if (isValidVector(simObjInternal.threePosition)) threeMesh.position.copy(simObjInternal.threePosition);
                 corePhysicsStateReset = true;
             }
         }
 
         if (corePhysicsStateReset || (visualReset && simulationStatus !== 'running')) {
-            trajectoryPointsRef.current.set(objData.id, isValidVector(simObj.threePosition) ? [simObj.threePosition.clone()] : []);
+            trajectoryPointsRef.current.set(objData.id, isValidVector(simObjInternal.threePosition) ? [simObjInternal.threePosition.clone()] : []);
             const trajectoryLine = trajectoriesRef.current.get(objData.id);
             if (trajectoryLine) {
               scene.remove(trajectoryLine); 
@@ -938,7 +934,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       }
     });
 
-    simulationObjectsRef.current.forEach((simObj, id) => {
+    simulationObjectsRef.current.forEach((simObjInternal, id) => {
       if (!currentPropIds.has(id)) {
         const mappedObjToRemove = objectsMapRef.current.get(id);
         if (mappedObjToRemove) {
@@ -1032,7 +1028,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 material.roughness = 0.8;
                 threeMesh.castShadow = false;
                 threeMesh.receiveShadow = false;
-            } else if (objData.name === "Earth" || objData.name === "Moon" || objData.name === "Jupiter" || simObj.name === "Ceres" || simObj.name === "Mercury" || simObj.name === "Venus" || simObj.name === "Mars" || simObj.name === "Saturn" || simObj.name === "Uranus" || simObj.name === "Neptune") { // Corrected simObj to objData
+            } else if (objData.name === "Earth" || objData.name === "Moon" || objData.name === "Jupiter" || objData.name === "Ceres" || objData.name === "Mercury" || objData.name === "Venus" || objData.name === "Mars" || objData.name === "Saturn" || objData.name === "Uranus" || objData.name === "Neptune") {
                 material.metalness = 0.1;
                 material.roughness = 0.7;
                 material.emissive?.set(0x000000);
@@ -1110,5 +1106,3 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
-
-    
