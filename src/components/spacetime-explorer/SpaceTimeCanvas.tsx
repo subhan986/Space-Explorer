@@ -138,7 +138,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       };
       activeParticlesRef.current.push(particle);
     }
-  }, [obj1.color, obj1.mass, obj1.radius, obj2.color, obj2.mass, obj2.radius]);
+  }, []);
 
 
   const updatePhysics = useCallback((dt: number) => {
@@ -1232,5 +1232,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
 export default SpaceTimeCanvas;
 
+
+    
 
     
