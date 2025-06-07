@@ -234,9 +234,7 @@ export default function UICustomizer() {
           </div>
         </section>
         <Separator />
-        <div className="pt-4 pb-2 flex justify-end sticky bottom-0 bg-background border-t border-border -mx-4 px-4">
-            <Button variant="outline" onClick={resetSettings} className="border-primary text-primary hover:bg-primary/10">Reset to Defaults</Button>
-        </div>
+        {/* The 'Reset to Defaults' button and its container div have been removed */}
       </div>
     </>
   );
