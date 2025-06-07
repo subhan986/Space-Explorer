@@ -33,15 +33,23 @@ interface PaletteOption {
 const themeBackgroundPalettes: PaletteOption[] = [
   { name: 'Graphite', hsl: { h: 0, s: 0, l: 13 } },
   { name: 'Space Blue', hsl: { h: 220, s: 25, l: 15 } },
+  { name: 'Deep Ocean', hsl: { h: 210, s: 30, l: 10 } },
+  { name: 'Charcoal', hsl: { h: 0, s: 0, l: 20 } },
   { name: 'Snow', hsl: { h: 0, s: 0, l: 97 } },
   { name: 'Paper', hsl: { h: 40, s: 30, l: 95 } },
+  { name: 'Ivory', hsl: { h: 50, s: 20, l: 96 } },
+  { name: 'Light Steel', hsl: { h: 220, s: 10, l: 94 } },
 ];
 
 const themeForegroundPalettes: PaletteOption[] = [
   { name: 'Light Gray', hsl: { h: 0, s: 0, l: 90 } },
   { name: 'Off-White', hsl: { h: 30, s: 20, l: 85 } },
+  { name: 'Silver Text', hsl: { h: 0, s: 0, l: 75 } },
+  { name: 'Cream', hsl: { h: 45, s: 50, l: 92 } },
   { name: 'Dark Slate', hsl: { h: 0, s: 0, l: 10 } },
   { name: 'Charcoal Text', hsl: { h: 210, s: 10, l: 20 } },
+  { name: 'Near Black', hsl: { h: 0, s: 0, l: 5 } },
+  { name: 'Steel Blue Text', hsl: { h: 215, s: 20, l: 30 } },
 ];
 
 const themePrimaryPalettes: PaletteOption[] = [
@@ -50,6 +58,9 @@ const themePrimaryPalettes: PaletteOption[] = [
   { name: 'Crimson Red', hsl: { h: 0, s: 50, l: 45 } },
   { name: 'Royal Purple', hsl: { h: 270, s: 50, l: 50 } },
   { name: 'Ocean Teal', hsl: { h: 175, s: 55, l: 40 } },
+  { name: 'Goldenrod', hsl: { h: 45, s: 70, l: 50 } },
+  { name: 'Indigo', hsl: { h: 240, s: 60, l: 55 } },
+  { name: 'Olive Green', hsl: { h: 80, s: 30, l: 40 } },
 ];
 
 const themeAccentPalettes: PaletteOption[] = [
@@ -58,6 +69,9 @@ const themeAccentPalettes: PaletteOption[] = [
   { name: 'Sunset Orange', hsl: { h: 30, s: 80, l: 55 } },
   { name: 'Hot Pink', hsl: { h: 330, s: 70, l: 60 } },
   { name: 'Lime Green', hsl: { h: 90, s: 65, l: 50 } },
+  { name: 'Sky Blue', hsl: { h: 200, s: 70, l: 60 } },
+  { name: 'Ruby Red', hsl: { h: 350, s: 75, l: 50 } },
+  { name: 'Amber', hsl: { h: 40, s: 85, l: 58 } },
 ];
 
 
