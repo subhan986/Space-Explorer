@@ -43,6 +43,17 @@ interface MappedObject {
   objectName: string;
 }
 
+interface ActiveParticle {
+  position: THREE.Vector3;
+  velocity: THREE.Vector3;
+  lifetime: number;
+  initialLifetime: number;
+  color: THREE.Color;
+  size: number; // Though PointsMaterial size is global, can be used for custom shaders later
+}
+
+const MAX_PARTICLES = 5000; // Maximum number of particles to manage for performance
+
 const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   objects,
   selectedObjectId,
@@ -88,10 +99,47 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   const keysPressedRef = useRef<{ [key: string]: boolean }>({});
   const cameraMoveSpeed = 100.0;
 
+  // Particle System Refs
+  const activeParticlesRef = useRef<ActiveParticle[]>([]);
+  const particleSystemRef = useRef<THREE.Points | null>(null);
+  const particleGeometryRef = useRef<THREE.BufferGeometry | null>(null);
+  const particleMaterialRef = useRef<THREE.PointsMaterial | null>(null);
+
 
   const isValidVector = useCallback((v: {x:number, y:number, z:number} | undefined): v is {x:number, y:number, z:number} => {
     return !!v && isFinite(v.x) && isFinite(v.y) && isFinite(v.z);
   },[]);
+
+  const spawnCollisionParticles = useCallback((collisionPoint: THREE.Vector3, obj1: SimulationObjectInternal, obj2: SimulationObjectInternal) => {
+    if (!particleSystemRef.current || activeParticlesRef.current.length >= MAX_PARTICLES) return;
+
+    const numParticlesToSpawn = Math.min(150, Math.max(20, Math.floor((obj1.mass + obj2.mass) * 0.05)));
+    const baseSpeed = 50 + Math.sqrt(obj1.mass + obj2.mass) * 0.5;
+
+    for (let i = 0; i < numParticlesToSpawn; i++) {
+      if (activeParticlesRef.current.length >= MAX_PARTICLES) break;
+
+      const lifetime = 1.5 + Math.random() * 2.5; // seconds
+      const particleColor = Math.random() > 0.5 ? new THREE.Color(obj1.color) : new THREE.Color(obj2.color);
+      
+      const velocity = new THREE.Vector3(
+        (Math.random() - 0.5) * 2,
+        (Math.random() - 0.5) * 2,
+        (Math.random() - 0.5) * 2
+      ).normalize().multiplyScalar(baseSpeed + (Math.random() - 0.5) * baseSpeed * 0.5);
+
+      const particle: ActiveParticle = {
+        position: collisionPoint.clone().add(new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).multiplyScalar(obj1.radius + obj2.radius * 0.1)), // slight offset
+        velocity: velocity,
+        lifetime: lifetime,
+        initialLifetime: lifetime,
+        color: particleColor,
+        size: 0.3 + Math.random() * 0.4,
+      };
+      activeParticlesRef.current.push(particle);
+    }
+  }, [obj1.color, obj1.mass, obj1.radius, obj2.color, obj2.mass, obj2.radius]);
+
 
   const updatePhysics = useCallback((dt: number) => {
     if (!simulationObjectsRef.current) return;
@@ -205,6 +253,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             absorbed = obj1.id < obj2.id ? obj2 : obj1;
           }
           
+          // Spawn particles BEFORE processing the merge event fully
+          const collisionPoint = obj1.threePosition.clone().lerp(obj2.threePosition, obj1.radius / (obj1.radius + obj2.radius));
+          spawnCollisionParticles(collisionPoint, obj1, obj2);
+
           mergeEvents.push({ absorbedId: absorbed.id, absorberId: absorber.id, massToTransfer: absorbed.mass });
           involvedInMergeThisFrame.add(absorbed.id); 
         }
@@ -217,7 +269,55 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       });
     }
 
-  }, [isValidVector, onObjectsCollidedAndMerged]);
+  }, [isValidVector, onObjectsCollidedAndMerged, spawnCollisionParticles]);
+
+  const updateParticles = useCallback((dt: number) => {
+    if (!particleGeometryRef.current || !particleSystemRef.current) return;
+
+    const positions: number[] = [];
+    const colors: number[] = [];
+    
+    const newActiveParticles: ActiveParticle[] = [];
+
+    for (let i = 0; i < activeParticlesRef.current.length; i++) {
+      const p = activeParticlesRef.current[i];
+      p.lifetime -= dt;
+
+      if (p.lifetime > 0) {
+        p.position.addScaledVector(p.velocity, dt);
+        
+        positions.push(p.position.x, p.position.y, p.position.z);
+        
+        const alpha = Math.max(0, p.lifetime / p.initialLifetime); // For potential future use with custom shaders
+        colors.push(p.color.r, p.color.g, p.color.b); // PointsMaterial opacity is global, not per-vertex
+        
+        newActiveParticles.push(p);
+      }
+    }
+    activeParticlesRef.current = newActiveParticles;
+
+    if (positions.length > 0) {
+      particleGeometryRef.current.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      particleGeometryRef.current.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      particleSystemRef.current.visible = true;
+    } else {
+      // Clear attributes if no particles to prevent rendering issues with old data
+      particleGeometryRef.current.deleteAttribute('position');
+      particleGeometryRef.current.deleteAttribute('color');
+      particleSystemRef.current.visible = false;
+    }
+    
+    if (particleGeometryRef.current.attributes.position) {
+        particleGeometryRef.current.attributes.position.needsUpdate = true;
+    }
+    if (particleGeometryRef.current.attributes.color) {
+        particleGeometryRef.current.attributes.color.needsUpdate = true;
+    }
+    particleGeometryRef.current.computeBoundingSphere();
+
+
+  }, []);
+
 
   const updateTrajectories = useCallback(() => {
     if (!sceneRef.current || !simulationObjectsRef.current) return;
@@ -432,6 +532,22 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         gridPlaneRef.current.geometry.userData.originalPositions =
             (gridPlaneRef.current.geometry.attributes.position as THREE.BufferAttribute).clone();
     }
+    
+    // Initialize Particle System
+    particleMaterialRef.current = new THREE.PointsMaterial({
+        size: 0.8, // Global particle size
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.9,
+        sizeAttenuation: true,
+        blending: THREE.AdditiveBlending, // For a brighter particle effect
+        depthWrite: false, // Particles don't obscure each other as much
+    });
+    particleGeometryRef.current = new THREE.BufferGeometry();
+    particleSystemRef.current = new THREE.Points(particleGeometryRef.current, particleMaterialRef.current);
+    particleSystemRef.current.visible = false; // Initially hidden
+    scene.add(particleSystemRef.current);
+
 
     const handleDoubleClick = (event: MouseEvent) => {
       if (!cameraRef.current || !sceneRef.current || !selectedObjectId || !mountRef.current || !onObjectSelected) return;
@@ -531,6 +647,13 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       });
       gridPlaneRef.current?.geometry.dispose();
       (gridPlaneRef.current?.material as THREE.Material)?.dispose();
+
+      // Dispose particle system resources
+      particleGeometryRef.current?.dispose();
+      particleMaterialRef.current?.dispose();
+      if (particleSystemRef.current && sceneRef.current) {
+        sceneRef.current.remove(particleSystemRef.current);
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
@@ -633,6 +756,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             
             updatePhysics(dt);
             updateTrajectories();
+            updateParticles(dt); // Update particles
             deformGrid();
 
             if (onSimulatedTimeDeltaUpdate) {
@@ -668,7 +792,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     };
     animate(0); 
     return () => { if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current); };
-  }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid, selectedObjectId, isValidVector, handleKeyboardCameraMovement, onSelectedObjectUpdate, onSimulatedTimeDeltaUpdate]);
+  }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid, selectedObjectId, isValidVector, handleKeyboardCameraMovement, onSelectedObjectUpdate, onSimulatedTimeDeltaUpdate, updateParticles]);
 
 
   useEffect(() => {
@@ -973,6 +1097,15 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       trajectoriesRef.current.clear();
       trajectoryPointsRef.current.clear();
 
+      // Clear active particles and their geometry
+      activeParticlesRef.current = [];
+      if (particleGeometryRef.current) {
+        particleGeometryRef.current.deleteAttribute('position');
+        particleGeometryRef.current.deleteAttribute('color');
+        if (particleSystemRef.current) particleSystemRef.current.visible = false;
+      }
+
+
       const updatedSimMap = new Map<string, SimulationObjectInternal>();
       objects.forEach(objData => {
         const pos = isValidVector(objData.position) ? objData.position : {x:0, y:0, z:0};
@@ -1098,3 +1231,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
+
+
+    
