@@ -10,13 +10,25 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useCustomization } from "@/contexts/CustomizationContext";
-import { HexColorPicker } from "react-colorful";
+// HexColorPicker is no longer needed here for grid color
 import React from "react";
+import { Check } from "lucide-react";
 
 interface ThemeColorControlProps {
   label: string;
   colorKey: 'themeBackground' | 'themeForeground' | 'themePrimary' | 'themeAccent';
 }
+
+const GRID_COLOR_PALETTE = [
+  '#8A2BE2', // Violet (Original Default)
+  '#FFFFFF', // White
+  '#A9A9A9', // DarkGray
+  '#505050', // Medium Gray
+  '#1E90FF', // DodgerBlue
+  '#32CD32', // LimeGreen
+  '#FF4500', // OrangeRed
+  '#FFD700', // Gold
+];
 
 const ThemeColorControl: React.FC<ThemeColorControlProps> = ({ label, colorKey }) => {
   const { settings, updateThemeColorValue } = useCustomization();
@@ -26,7 +38,7 @@ const ThemeColorControl: React.FC<ThemeColorControlProps> = ({ label, colorKey }
     const numValue = parseInt(value, 10);
     if (!isNaN(numValue)) {
       updateThemeColorValue(colorKey, component, numValue);
-    } else if (value === "") { // Allow clearing input, treat as 0 or a sensible default
+    } else if (value === "") { 
       updateThemeColorValue(colorKey, component, 0);
     }
   };
@@ -136,23 +148,24 @@ export default function UICustomizer() {
           <h3 className="text-xl font-semibold mb-4">Grid Customization</h3>
           <div className="space-y-4 p-3 border border-border rounded-lg shadow-sm bg-card">
             <div>
-              <Label htmlFor="gridColor" className="text-base font-semibold text-card-foreground mb-1 block">Grid Color (Hex)</Label>
-              <div className="flex items-center gap-2 mb-2">
-                <Input
-                  id="gridColorInput"
-                  type="text"
-                  value={settings.gridColor}
-                  onChange={(e) => updateSetting('gridColor', e.target.value)}
-                  className="w-1/2 h-9 p-2 text-sm"
-                  placeholder="#RRGGBB"
-                />
-                <div style={{ backgroundColor: settings.gridColor, width: '28px', height: '28px', borderRadius: '4px', border: '1px solid hsl(var(--border))' }} />
+              <Label className="text-base font-semibold text-card-foreground mb-2 block">Grid Color</Label>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {GRID_COLOR_PALETTE.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={`w-8 h-8 rounded-md border-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+                                ${settings.gridColor.toLowerCase() === color.toLowerCase() ? 'border-primary ring-2 ring-primary' : 'border-border'}`}
+                    style={{ backgroundColor: color }}
+                    onClick={() => updateSetting('gridColor', color)}
+                    title={color}
+                  >
+                    {settings.gridColor.toLowerCase() === color.toLowerCase() && (
+                      <Check className="w-5 h-5 text-primary-foreground opacity-80" style={{ mixBlendMode: color.toLowerCase() === '#ffffff' ? 'difference':'normal'}}/>
+                    )}
+                  </button>
+                ))}
               </div>
-              <HexColorPicker 
-                color={settings.gridColor} 
-                onChange={(newColor) => updateSetting('gridColor', newColor)} 
-                style={{ width: '100%', height: '150px' }}
-              />
             </div>
             <div className="mt-3">
               <Label htmlFor="gridOpacity" className="text-base font-semibold text-card-foreground">Grid Opacity: {settings.gridOpacity.toFixed(2)}</Label>
