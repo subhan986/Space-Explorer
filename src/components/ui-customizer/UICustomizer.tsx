@@ -4,14 +4,14 @@
 
 import { SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
-// Input is no longer needed for theme HSL
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCustomization, HSLColor } from "@/contexts/CustomizationContext";
 import React from "react";
-import { Check } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react"; // Added RotateCcw for reset button
 
 const GRID_COLOR_PALETTE = [
   '#8A2BE2', // Violet (Original Default)
@@ -24,7 +24,6 @@ const GRID_COLOR_PALETTE = [
   '#FFD700', // Gold
 ];
 
-// Define palettes for theme colors
 interface PaletteOption {
   name: string;
   hsl: HSLColor;
@@ -74,6 +73,12 @@ const themeAccentPalettes: PaletteOption[] = [
   { name: 'Amber', hsl: { h: 40, s: 85, l: 58 } },
 ];
 
+const FONT_OPTIONS = [
+  { value: 'geist', label: 'Geist Sans (Default)' },
+  { value: 'inter', label: 'Inter' },
+  { value: 'robotoSlab', label: 'Roboto Slab (Serif)' },
+];
+
 
 interface ThemePaletteSelectorProps {
   label: string;
@@ -95,13 +100,11 @@ const ThemePaletteSelector: React.FC<ThemePaletteSelectorProps> = ({ label, colo
     } else { // Dark mode
         if (colorKey === 'themeBackground') displayL = baseHsl.l < 50 ? baseHsl.l : Math.min(20, 100 - baseHsl.l);
         else if (colorKey === 'themeForeground') displayL = baseHsl.l > 50 ? baseHsl.l : Math.max(80, 100 - baseHsl.l);
-        // For primary and accent in dark mode, use base lightness or slightly adjust if needed
         else if (colorKey === 'themePrimary') displayL = baseHsl.l;
         else if (colorKey === 'themeAccent') displayL = baseHsl.l;
     }
     return Math.max(0, Math.min(100, displayL));
   };
-
 
   return (
     <div className="space-y-2 p-3 border border-border rounded-lg shadow-sm bg-card">
@@ -135,7 +138,6 @@ const ThemePaletteSelector: React.FC<ThemePaletteSelectorProps> = ({ label, colo
     </div>
   );
 };
-
 
 export default function UICustomizer() {
   const { settings, updateSetting, resetSettings } = useCustomization();
@@ -219,6 +221,24 @@ export default function UICustomizer() {
           <h3 className="text-xl font-semibold mb-4">Typography Settings</h3>
           <div className="space-y-4 p-3 border border-border rounded-lg shadow-sm bg-card">
             <div>
+              <Label htmlFor="fontFamily" className="text-base font-semibold text-card-foreground">Font Family</Label>
+              <Select
+                value={settings.fontFamilyKey}
+                onValueChange={(value) => updateSetting('fontFamilyKey', value)}
+              >
+                <SelectTrigger id="fontFamily" className="mt-2 h-10">
+                  <SelectValue placeholder="Select font family" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FONT_OPTIONS.map(font => (
+                    <SelectItem key={font.value} value={font.value}>
+                      {font.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="mt-3">
               <Label htmlFor="uiScale" className="text-base font-semibold text-card-foreground">UI Scale: {settings.uiScale}%</Label>
               <Slider
                 id="uiScale"
@@ -248,7 +268,16 @@ export default function UICustomizer() {
           </div>
         </section>
         <Separator />
-        {/* The 'Reset to Defaults' button and its container div have been removed */}
+        <div className="pt-4 pb-2">
+            <Button 
+                variant="outline" 
+                onClick={resetSettings} 
+                className="w-full border-primary text-primary hover:bg-primary/10"
+            >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reset to Defaults
+            </Button>
+        </div>
       </div>
     </>
   );

@@ -3,9 +3,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Removed explicit font-family from body, will be set by CustomizationContext */
+/*
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
+*/
 
 @layer base {
   :root {
@@ -69,11 +72,15 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+  /* Monospace font can be applied to specific elements if needed */
+  code, pre, kbd, samp {
+    font-family: var(--font-geist-mono), monospace; /* Fallback to generic monospace */
+  }
 }
 
 .object-name-label {
   color: white;
-  font-family: var(--font-geist-sans), Arial, sans-serif;
+  /* font-family will be inherited or can be specifically set if different from body */
   font-size: 10px; /* Smaller font size */
   padding: 1px 4px; /* Adjusted padding */
   background-color: transparent; /* Fully transparent background */

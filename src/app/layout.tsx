@@ -1,16 +1,27 @@
+
 import type {Metadata} from 'next';
-import {Geist, Geist_Mono} from 'next/font/google';
+import { Inter, Roboto_Slab } from 'next/font/google';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import { CustomizationProvider } from '@/contexts/CustomizationContext';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+// Removed incorrect function calls for GeistSans and GeistMono.
+// const geistSans = GeistSans({ ... }); <- This was incorrect
+// const geistMono = GeistMono({ ... }); <- This was incorrect
+
+// Google fonts are instantiated by calling them as functions:
+const inter = Inter({
+  variable: '--font-inter',
   subsets: ['latin'],
+  weight: ['400', '700'],
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const robotoSlab = Roboto_Slab({
+  variable: '--font-roboto-slab',
   subsets: ['latin'],
+  weight: ['400', '700'],
 });
 
 export const metadata: Metadata = {
@@ -24,11 +35,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">{/* Add dark class for broad component compatibility */}
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}>
-        {children}
-        <Toaster />
-      </body>
+    // Use GeistSans.variable and GeistMono.variable directly for the geist package
+    <html lang="en" className={`${GeistSans.variable} ${inter.variable} ${robotoSlab.variable} ${GeistMono.variable}`}>
+      {/* CustomizationProvider now wraps body to allow context to modify body styles */}
+      <CustomizationProvider>
+        <body className={`antialiased bg-background text-foreground`}>
+          {children}
+          <Toaster />
+        </body>
+      </CustomizationProvider>
     </html>
   );
 }

@@ -3,11 +3,18 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
-export interface HSLColor { // Exporting HSLColor
+export interface HSLColor {
   h: number;
   s: number;
   l: number;
 }
+
+const FONT_MAP: Record<string, string> = {
+  'geist': 'var(--font-geist-sans)',
+  'inter': 'var(--font-inter)',
+  'robotoSlab': 'var(--font-roboto-slab)',
+};
+const DEFAULT_FONT_KEY = 'geist';
 
 interface CustomizationSettings {
   themeMode: 'light' | 'dark';
@@ -19,18 +26,20 @@ interface CustomizationSettings {
   gridOpacity: number; // 0-1
   uiScale: number; // percentage, e.g., 100
   showObjectLabels3D: boolean;
+  fontFamilyKey: string; // e.g., 'geist', 'inter', 'robotoSlab'
 }
 
 const DEFAULT_SETTINGS: CustomizationSettings = {
   themeMode: 'dark',
-  themeBackground: { h: 0, s: 0, l: 13 }, // Matches 'Graphite' in new palette
-  themeForeground: { h: 0, s: 0, l: 90 }, // Matches 'Light Gray' in new palette
-  themePrimary: { h: 220, s: 43, l: 41 }, // Matches 'Deep Space Blue' in new palette
-  themeAccent: { h: 271, s: 76, l: 53 }, // Matches 'Violet' in new palette
+  themeBackground: { h: 0, s: 0, l: 13 },
+  themeForeground: { h: 0, s: 0, l: 90 },
+  themePrimary: { h: 220, s: 43, l: 41 },
+  themeAccent: { h: 271, s: 76, l: 53 },
   gridColor: '#8A2BE2',
   gridOpacity: 0.3,
   uiScale: 100,
   showObjectLabels3D: true,
+  fontFamilyKey: DEFAULT_FONT_KEY,
 };
 
 interface CustomizationContextType {
@@ -69,7 +78,8 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
           typeof mergedSettings.gridColor === 'string' &&
           typeof mergedSettings.gridOpacity === 'number' &&
           typeof mergedSettings.uiScale === 'number' &&
-          typeof mergedSettings.showObjectLabels3D === 'boolean'
+          typeof mergedSettings.showObjectLabels3D === 'boolean' &&
+          typeof mergedSettings.fontFamilyKey === 'string' // Added font family key validation
         ) {
           setSettings(mergedSettings);
         } else {
@@ -91,10 +101,14 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
       localStorage.setItem('spacetimeExplorerCustomization', JSON.stringify(settings));
 
       const rootStyle = document.documentElement.style;
+      const bodyStyle = document.body.style;
       
       document.documentElement.style.fontSize = `${settings.uiScale}%`;
       document.documentElement.classList.remove('light', 'dark');
       document.documentElement.classList.add(settings.themeMode);
+
+      // Apply font family
+      bodyStyle.fontFamily = FONT_MAP[settings.fontFamilyKey] || FONT_MAP[DEFAULT_FONT_KEY];
 
 
       let effectiveBackgroundH = settings.themeBackground.h;
@@ -192,10 +206,14 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
 
   const resetSettings = useCallback(() => {
     setSettings(DEFAULT_SETTINGS);
+    // Directly apply font size default as body style might not update immediately from state
     document.documentElement.style.fontSize = `${DEFAULT_SETTINGS.uiScale}%`;
+    document.body.style.fontFamily = FONT_MAP[DEFAULT_SETTINGS.fontFamilyKey];
   }, []);
 
   if (!isLoaded) {
+    // Optionally, return a loading indicator or null to prevent flash of unstyled content
+    // For this prototype, null is fine as it's client-side quick.
     return null; 
   }
 
