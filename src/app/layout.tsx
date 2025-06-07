@@ -7,10 +7,6 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { CustomizationProvider } from '@/contexts/CustomizationContext';
 
-// Removed incorrect function calls for GeistSans and GeistMono.
-// const geistSans = GeistSans({ ... }); <- This was incorrect
-// const geistMono = GeistMono({ ... }); <- This was incorrect
-
 // Google fonts are instantiated by calling them as functions:
 const inter = Inter({
   variable: '--font-inter',
@@ -37,13 +33,13 @@ export default function RootLayout({
   return (
     // Use GeistSans.variable and GeistMono.variable directly for the geist package
     <html lang="en" className={`${GeistSans.variable} ${inter.variable} ${robotoSlab.variable} ${GeistMono.variable}`}>
-      {/* CustomizationProvider now wraps body to allow context to modify body styles */}
-      <CustomizationProvider>
-        <body className={`antialiased bg-background text-foreground`}>
+      {/* CustomizationProvider is now inside body to satisfy Next.js structure */}
+      <body className={`antialiased bg-background text-foreground`}>
+        <CustomizationProvider>
           {children}
           <Toaster />
-        </body>
-      </CustomizationProvider>
+        </CustomizationProvider>
+      </body>
     </html>
   );
 }
