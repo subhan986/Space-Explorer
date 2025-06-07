@@ -25,7 +25,6 @@ interface CustomizationSettings {
   gridColor: string; // hex
   gridOpacity: number; // 0-1
   uiScale: number; // percentage, e.g., 100
-  showObjectLabels3D: boolean;
   fontFamilyKey: string; // e.g., 'geist', 'inter', 'robotoSlab'
 }
 
@@ -38,7 +37,6 @@ const DEFAULT_SETTINGS: CustomizationSettings = {
   gridColor: '#8A2BE2',
   gridOpacity: 0.3,
   uiScale: 100,
-  showObjectLabels3D: true,
   fontFamilyKey: DEFAULT_FONT_KEY,
 };
 
@@ -78,8 +76,7 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
           typeof mergedSettings.gridColor === 'string' &&
           typeof mergedSettings.gridOpacity === 'number' &&
           typeof mergedSettings.uiScale === 'number' &&
-          typeof mergedSettings.showObjectLabels3D === 'boolean' &&
-          typeof mergedSettings.fontFamilyKey === 'string' // Added font family key validation
+          typeof mergedSettings.fontFamilyKey === 'string'
         ) {
           setSettings(mergedSettings);
         } else {

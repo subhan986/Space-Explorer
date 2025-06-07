@@ -511,12 +511,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       }
       rendererRef.current?.dispose();
       
-      const bgTexture = sceneRef.current?.background as THREE.Texture;
-      if (bgTexture && bgTexture.isTexture) { 
-        bgTexture.dispose();
-      }
-
-
+      sceneRef.current?.clear(); // Clear scene objects
       objectsMapRef.current.forEach(mappedObj => {
         mappedObj.mainMesh.geometry.dispose();
         if (mappedObj.mainMesh.material instanceof THREE.Material) mappedObj.mainMesh.material.dispose();
@@ -536,10 +531,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       });
       gridPlaneRef.current?.geometry.dispose();
       (gridPlaneRef.current?.material as THREE.Material)?.dispose();
-      sceneRef.current?.clear();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onObjectSelected]); 
+  }, []); 
 
   useEffect(() => {
     if (gridPlaneRef.current) {
@@ -549,15 +543,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       material.needsUpdate = true; 
     }
   }, [customizationSettings.gridColor, customizationSettings.gridOpacity]);
-
-  useEffect(() => {
-    objectsMapRef.current.forEach(mappedObj => {
-        if (mappedObj.nameLabel) {
-            mappedObj.nameLabel.element.style.display = customizationSettings.showObjectLabels3D ? '' : 'none';
-        }
-    });
-  }, [customizationSettings.showObjectLabels3D]);
-
 
   useEffect(() => {
     if (!ambientLightRef.current || !directionalLightRef.current || !pointLightRef.current) return;
@@ -775,7 +760,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         const labelDiv = document.createElement('div');
         labelDiv.className = 'object-name-label';
         labelDiv.textContent = simObjInternal.name;
-        labelDiv.style.display = customizationSettings.showObjectLabels3D ? '' : 'none';
+        labelDiv.style.display = ''; // Always show labels by default now
         const nameLabel = new CSS2DObject(labelDiv);
         nameLabel.position.set(0, simObjInternal.radius * 1.5 + 5, 0); 
         threeMesh.add(nameLabel);
@@ -816,7 +801,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         simObjInternal.type = objData.type;
 
         if (mappedObj.nameLabel) {
-           mappedObj.nameLabel.element.style.display = customizationSettings.showObjectLabels3D ? '' : 'none';
+           mappedObj.nameLabel.element.style.display = ''; // Always show labels
         }
 
 
@@ -975,7 +960,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       updateTrajectories(); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [objects, simulationStatus, isValidVector, deformGrid, updateTrajectories, showShadows, lightingMode, customizationSettings.showObjectLabels3D]); 
+  }, [objects, simulationStatus, isValidVector, deformGrid, updateTrajectories, showShadows, lightingMode]); 
 
   useEffect(() => {
     if (simulationStatus === 'stopped') {
@@ -1017,7 +1002,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             if (mappedObj.nameLabel.element.textContent !== objData.name) {
                  mappedObj.nameLabel.element.textContent = objData.name;
             }
-            mappedObj.nameLabel.element.style.display = customizationSettings.showObjectLabels3D ? '' : 'none';
+            mappedObj.nameLabel.element.style.display = ''; // Always show labels
           }
 
 
@@ -1104,7 +1089,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       deformGrid(); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simulationStatus, objects, isValidVector, updateTrajectories, deformGrid, showShadows, lightingMode, customizationSettings.showObjectLabels3D]); 
+  }, [simulationStatus, objects, isValidVector, updateTrajectories, deformGrid, showShadows, lightingMode]); 
 
 
   return (
@@ -1113,5 +1098,3 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
-
-    

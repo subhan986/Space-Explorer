@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCustomization, HSLColor } from "@/contexts/CustomizationContext";
 import React from "react";
-import { Check, RotateCcw } from "lucide-react"; // Added RotateCcw for reset button
+import { Check, RotateCcw } from "lucide-react";
 
 const GRID_COLOR_PALETTE = [
   '#8A2BE2', // Violet (Original Default)
@@ -34,10 +34,15 @@ const themeBackgroundPalettes: PaletteOption[] = [
   { name: 'Space Blue', hsl: { h: 220, s: 25, l: 15 } },
   { name: 'Deep Ocean', hsl: { h: 210, s: 30, l: 10 } },
   { name: 'Charcoal', hsl: { h: 0, s: 0, l: 20 } },
+  { name: 'Midnight Green', hsl: { h: 180, s: 15, l: 12 } },
+  { name: 'Dark Purple', hsl: { h: 270, s: 20, l: 18 } },
+
   { name: 'Snow', hsl: { h: 0, s: 0, l: 97 } },
   { name: 'Paper', hsl: { h: 40, s: 30, l: 95 } },
   { name: 'Ivory', hsl: { h: 50, s: 20, l: 96 } },
   { name: 'Light Steel', hsl: { h: 220, s: 10, l: 94 } },
+  { name: 'Mint Cream', hsl: { h: 150, s: 40, l: 95 } },
+  { name: 'Lavender Mist', hsl: { h: 250, s: 30, l: 96 } },
 ];
 
 const themeForegroundPalettes: PaletteOption[] = [
@@ -45,10 +50,15 @@ const themeForegroundPalettes: PaletteOption[] = [
   { name: 'Off-White', hsl: { h: 30, s: 20, l: 85 } },
   { name: 'Silver Text', hsl: { h: 0, s: 0, l: 75 } },
   { name: 'Cream', hsl: { h: 45, s: 50, l: 92 } },
+  { name: 'Ghost White', hsl: { h: 240, s: 60, l: 95 } },
+  { name: 'Pale Aqua', hsl: { h: 180, s: 40, l: 88 } },
+
   { name: 'Dark Slate', hsl: { h: 0, s: 0, l: 10 } },
   { name: 'Charcoal Text', hsl: { h: 210, s: 10, l: 20 } },
   { name: 'Near Black', hsl: { h: 0, s: 0, l: 5 } },
   { name: 'Steel Blue Text', hsl: { h: 215, s: 20, l: 30 } },
+  { name: 'Dark Brown', hsl: { h: 25, s: 30, l: 15 } },
+  { name: 'Deep Navy', hsl: { h: 240, s: 40, l: 25 } },
 ];
 
 const themePrimaryPalettes: PaletteOption[] = [
@@ -60,6 +70,8 @@ const themePrimaryPalettes: PaletteOption[] = [
   { name: 'Goldenrod', hsl: { h: 45, s: 70, l: 50 } },
   { name: 'Indigo', hsl: { h: 240, s: 60, l: 55 } },
   { name: 'Olive Green', hsl: { h: 80, s: 30, l: 40 } },
+  { name: 'Maroon', hsl: { h: 0, s: 35, l: 30 } },
+  { name: 'Sapphire Blue', hsl: { h: 210, s: 60, l: 50 } },
 ];
 
 const themeAccentPalettes: PaletteOption[] = [
@@ -71,6 +83,8 @@ const themeAccentPalettes: PaletteOption[] = [
   { name: 'Sky Blue', hsl: { h: 200, s: 70, l: 60 } },
   { name: 'Ruby Red', hsl: { h: 350, s: 75, l: 50 } },
   { name: 'Amber', hsl: { h: 40, s: 85, l: 58 } },
+  { name: 'Electric Blue', hsl: { h: 230, s: 80, l: 60 } },
+  { name: 'Emerald Green', hsl: { h: 150, s: 70, l: 40 } },
 ];
 
 const FONT_OPTIONS = [
@@ -246,23 +260,6 @@ export default function UICustomizer() {
                 value={[settings.uiScale]}
                 onValueChange={(value) => updateSetting('uiScale', value[0])}
                 className="mt-2 [&>span:first-child]:h-2 [&>span>span]:bg-primary [&>span>button]:bg-primary-foreground [&>span>button]:border-primary"
-              />
-            </div>
-          </div>
-        </section>
-        <Separator/>
-        <section>
-          <h3 className="text-xl font-semibold mb-4">Component Visibility</h3>
-           <div className="p-3 border border-border rounded-lg shadow-sm bg-card space-y-3">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="show-object-labels-3d" className="text-base text-card-foreground">
-                Show Object Names in 3D Scene
-              </Label>
-              <Switch
-                id="show-object-labels-3d"
-                checked={settings.showObjectLabels3D}
-                onCheckedChange={(checked) => updateSetting('showObjectLabels3D', checked)}
-                className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
               />
             </div>
           </div>
