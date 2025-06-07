@@ -17,16 +17,20 @@ interface CustomizationSettings {
   themeAccent: HSLColor;
   gridColor: string; // hex
   gridOpacity: number; // 0-1
+  uiScale: number; // percentage, e.g., 100
+  showObjectLabels3D: boolean;
 }
 
 const DEFAULT_SETTINGS: CustomizationSettings = {
   themeMode: 'dark',
-  themeBackground: { h: 0, s: 0, l: 13 },    // Matches --background: 0 0% 13%;
-  themeForeground: { h: 0, s: 0, l: 90 },    // Matches --foreground: 0 0% 90%;
-  themePrimary: { h: 220, s: 43, l: 41 },  // Matches --primary: 220 43% 41%;
-  themeAccent: { h: 271, s: 76, l: 53 },   // Matches --accent: 271 76% 53%;
+  themeBackground: { h: 0, s: 0, l: 13 },
+  themeForeground: { h: 0, s: 0, l: 90 },
+  themePrimary: { h: 220, s: 43, l: 41 },
+  themeAccent: { h: 271, s: 76, l: 53 },
   gridColor: '#8A2BE2',
   gridOpacity: 0.3,
+  uiScale: 100,
+  showObjectLabels3D: true,
 };
 
 interface CustomizationContextType {
@@ -58,6 +62,7 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
       try {
         const parsed = JSON.parse(storedSettings) as Partial<CustomizationSettings>;
         const mergedSettings = { ...DEFAULT_SETTINGS, ...parsed };
+        // Basic validation for critical fields
         if (
           typeof mergedSettings.themeMode === 'string' &&
           typeof mergedSettings.themeBackground?.h === 'number' &&
@@ -65,11 +70,13 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
           typeof mergedSettings.themePrimary?.h === 'number' &&
           typeof mergedSettings.themeAccent?.h === 'number' &&
           typeof mergedSettings.gridColor === 'string' &&
-          typeof mergedSettings.gridOpacity === 'number'
+          typeof mergedSettings.gridOpacity === 'number' &&
+          typeof mergedSettings.uiScale === 'number' &&
+          typeof mergedSettings.showObjectLabels3D === 'boolean'
         ) {
           setSettings(mergedSettings);
         } else {
-          console.warn("Stored customization settings were malformed. Resetting to defaults.");
+          console.warn("Stored customization settings were malformed or incomplete. Resetting to defaults.");
           localStorage.removeItem('spacetimeExplorerCustomization');
           setSettings(DEFAULT_SETTINGS);
         }
@@ -88,68 +95,97 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
 
       const rootStyle = document.documentElement.style;
       
-      // Determine effective HSL values based on themeMode
-      let effectiveBackground: HSLColor, effectiveForeground: HSLColor, effectivePrimary: HSLColor, effectiveAccent: HSLColor;
+      document.documentElement.style.fontSize = `${settings.uiScale}%`;
+      document.documentElement.classList.remove('light', 'dark');
+      document.documentElement.classList.add(settings.themeMode);
+
+
+      let effectiveBackgroundH = settings.themeBackground.h;
+      let effectiveBackgroundS = settings.themeBackground.s;
+      let effectiveBackgroundL: number;
+      let effectiveForegroundH = settings.themeForeground.h;
+      let effectiveForegroundS = settings.themeForeground.s;
+      let effectiveForegroundL: number;
+      
+      let effectivePrimaryH = settings.themePrimary.h;
+      let effectivePrimaryS = settings.themePrimary.s;
+      let effectivePrimaryL = settings.themePrimary.l;
+      
+      let effectiveAccentH = settings.themeAccent.h;
+      let effectiveAccentS = settings.themeAccent.s;
+      let effectiveAccentL = settings.themeAccent.l;
 
       if (settings.themeMode === 'light') {
-        effectiveBackground = { h: settings.themeBackground.h, s: settings.themeBackground.s, l: 92 };
-        effectiveForeground = { h: settings.themeForeground.h, s: settings.themeForeground.s, l: 10 };
-        // Adjust primary/accent for light mode: make them reasonably visible, not too pale or too dark.
-        effectivePrimary = { h: settings.themePrimary.h, s: settings.themePrimary.s, l: Math.min(65, Math.max(40, settings.themePrimary.l)) };
-        effectiveAccent = { h: settings.themeAccent.h, s: settings.themeAccent.s, l: Math.min(70, Math.max(45, settings.themeAccent.l)) };
+        effectiveBackgroundL = settings.themeBackground.l > 50 ? settings.themeBackground.l : Math.max(90, 100 - settings.themeBackground.l);
+        effectiveForegroundL = settings.themeForeground.l < 50 ? settings.themeForeground.l : Math.min(15, 100 - settings.themeForeground.l);
+        
+        effectivePrimaryL = Math.min(65, Math.max(35, settings.themePrimary.l));
+        effectiveAccentL = Math.min(70, Math.max(40, settings.themeAccent.l));
+
       } else { // Dark mode
-        effectiveBackground = settings.themeBackground;
-        effectiveForeground = settings.themeForeground;
-        effectivePrimary = settings.themePrimary;
-        effectiveAccent = settings.themeAccent;
+        effectiveBackgroundL = settings.themeBackground.l < 50 ? settings.themeBackground.l : Math.min(20, 100 - settings.themeBackground.l);
+        effectiveForegroundL = settings.themeForeground.l > 50 ? settings.themeForeground.l : Math.max(80, 100 - settings.themeForeground.l);
+
+        // Keep primary and accent lightness as is for dark mode, or adjust if needed
+        effectivePrimaryL = settings.themePrimary.l; // Or some adjustment like Math.max(30, settings.themePrimary.l)
+        effectiveAccentL = settings.themeAccent.l;   // Or Math.max(35, settings.themeAccent.l)
       }
 
-      rootStyle.setProperty('--background', hslToCssVarString(effectiveBackground));
-      rootStyle.setProperty('--foreground', hslToCssVarString(effectiveForeground));
+      rootStyle.setProperty('--background', `${effectiveBackgroundH} ${effectiveBackgroundS}% ${effectiveBackgroundL}%`);
+      rootStyle.setProperty('--foreground', `${effectiveForegroundH} ${effectiveForegroundS}% ${effectiveForegroundL}%`);
       
-      // Card uses background L value, shifted slightly
-      const cardL = effectiveBackground.l + (effectiveBackground.l < 50 ? 3 : -3);
-      rootStyle.setProperty('--card', `${effectiveBackground.h} ${effectiveBackground.s}% ${Math.max(0, Math.min(100,cardL))}%`);
-      rootStyle.setProperty('--card-foreground', hslToCssVarString(effectiveForeground));
+      const cardL = effectiveBackgroundL + (settings.themeMode === 'light' ? -3 : 3);
+      rootStyle.setProperty('--card', `${effectiveBackgroundH} ${effectiveBackgroundS}% ${Math.max(0, Math.min(100,cardL))}%`);
+      rootStyle.setProperty('--card-foreground', `${effectiveForegroundH} ${effectiveForegroundS}% ${effectiveForegroundL}%`);
       
-      // Popover also uses background L value, shifted slightly more or differently
-      const popoverL = effectiveBackground.l + (effectiveBackground.l < 50 ? -3 : 3); // Example: darker for dark bg, lighter for light bg
-      rootStyle.setProperty('--popover', `${effectiveBackground.h} ${effectiveBackground.s}% ${Math.max(0, Math.min(100,popoverL))}%`);
-      rootStyle.setProperty('--popover-foreground', hslToCssVarString(effectiveForeground));
+      const popoverL = effectiveBackgroundL + (settings.themeMode === 'light' ? -5 : 5);
+      rootStyle.setProperty('--popover', `${effectiveBackgroundH} ${effectiveBackgroundS}% ${Math.max(0, Math.min(100,popoverL))}%`);
+      rootStyle.setProperty('--popover-foreground', `${effectiveForegroundH} ${effectiveForegroundS}% ${effectiveForegroundL}%`);
 
-      rootStyle.setProperty('--primary', hslToCssVarString(effectivePrimary));
-      rootStyle.setProperty('--primary-foreground', effectivePrimary.l > 50 ? '0 0% 5%' : '0 0% 98%');
+      rootStyle.setProperty('--primary', `${effectivePrimaryH} ${effectivePrimaryS}% ${effectivePrimaryL}%`);
+      rootStyle.setProperty('--primary-foreground', effectivePrimaryL > 55 ? '0 0% 5%' : '0 0% 98%');
 
-      const secondaryL = effectivePrimary.l > 50 ? Math.max(0, effectivePrimary.l - 10) : Math.min(100, effectivePrimary.l + 10);
-      rootStyle.setProperty('--secondary', `${effectivePrimary.h} ${Math.max(0, effectivePrimary.s - 20)}% ${secondaryL}%`);
-      rootStyle.setProperty('--secondary-foreground', secondaryL > 50 ? '0 0% 5%' : '0 0% 98%');
+      const secondaryLOffset = settings.themeMode === 'light' ? -10 : 10;
+      const secondaryL = Math.max(0, Math.min(100, effectivePrimaryL + secondaryLOffset));
+      rootStyle.setProperty('--secondary', `${effectivePrimaryH} ${Math.max(0, effectivePrimaryS - 15)}% ${secondaryL}%`);
+      rootStyle.setProperty('--secondary-foreground', secondaryL > 55 ? '0 0% 5%' : '0 0% 98%');
       
-      const mutedL = effectiveForeground.l > 50 ? Math.max(0, effectiveForeground.l - 10) : Math.min(100, effectiveForeground.l + 10);
-      rootStyle.setProperty('--muted', `${effectiveForeground.h} ${effectiveForeground.s}% ${mutedL}%`);
-      const mutedFgL = effectiveForeground.l > 50 ? Math.max(0, effectiveForeground.l - 30) : Math.min(100, effectiveForeground.l + 30);
-      rootStyle.setProperty('--muted-foreground', `${effectiveForeground.h} ${effectiveForeground.s}% ${mutedFgL}%`);
+      const mutedLOffset = settings.themeMode === 'light' ? 5 : -5; // Muted should be closer to background
+      const mutedL = Math.max(0, Math.min(100, effectiveBackgroundL + mutedLOffset));
+      rootStyle.setProperty('--muted', `${effectiveBackgroundH} ${effectiveBackgroundS}% ${mutedL}%`);
+      const mutedFgLOffset = settings.themeMode === 'light' ? 30 : -30; // Muted FG should contrast with muted
+      const mutedFgL = Math.max(0, Math.min(100, effectiveForegroundL + mutedFgLOffset));
+      rootStyle.setProperty('--muted-foreground', `${effectiveForegroundH} ${effectiveForegroundS}% ${mutedFgL}%`);
 
-      rootStyle.setProperty('--accent', hslToCssVarString(effectiveAccent));
-      rootStyle.setProperty('--accent-foreground', effectiveAccent.l > 50 ? '0 0% 5%' : '0 0% 98%');
+      rootStyle.setProperty('--accent', `${effectiveAccentH} ${effectiveAccentS}% ${effectiveAccentL}%`);
+      rootStyle.setProperty('--accent-foreground', effectiveAccentL > 55 ? '0 0% 5%' : '0 0% 98%');
 
-      const borderL = effectiveBackground.l > 50 ? Math.max(0, effectiveBackground.l - 10) : Math.min(100, effectiveBackground.l + 10);
-      rootStyle.setProperty('--border', `${effectiveBackground.h} ${effectiveBackground.s}% ${borderL}%`);
-      rootStyle.setProperty('--input', `${effectiveBackground.h} ${effectiveBackground.s}% ${borderL}%`);
-      rootStyle.setProperty('--ring', hslToCssVarString(effectiveAccent)); // Ring usually matches accent
+      const borderLOffset = settings.themeMode === 'light' ? -10 : 10;
+      const borderL = Math.max(0, Math.min(100, effectiveBackgroundL + borderLOffset));
+      rootStyle.setProperty('--border', `${effectiveBackgroundH} ${effectiveBackgroundS}% ${borderL}%`);
+      rootStyle.setProperty('--input', `${effectiveBackgroundH} ${effectiveBackgroundS}% ${borderL}%`);
+      rootStyle.setProperty('--ring', `${effectiveAccentH} ${effectiveAccentS}% ${Math.min(100, effectiveAccentL + (settings.themeMode === 'light' ? -10 : 10))}%`);
 
-      // Update sidebar-specific variables to follow the main theme
-      const sidebarBgL = effectiveBackground.l > 10 ? Math.max(0, effectiveBackground.l - (settings.themeMode === 'light' ? -2 : 5) ) : Math.min(100, effectiveBackground.l + (settings.themeMode === 'light' ? 2 : 2));
-      rootStyle.setProperty('--sidebar-background', `${effectiveBackground.h} ${effectiveBackground.s}% ${sidebarBgL}%`);
-      rootStyle.setProperty('--sidebar-foreground', hslToCssVarString(effectiveForeground));
-      rootStyle.setProperty('--sidebar-primary', hslToCssVarString(effectivePrimary));
-      rootStyle.setProperty('--sidebar-primary-foreground', effectivePrimary.l > 50 ? '0 0% 5%' : '0 0% 98%');
+
+      // Sidebar specific variables
+      const sidebarBgLOffset = settings.themeMode === 'light' ? 2 : -2; // Slightly off from main background
+      const sidebarBgL = Math.max(0, Math.min(100, effectiveBackgroundL + sidebarBgLOffset));
+      rootStyle.setProperty('--sidebar-background', `${effectiveBackgroundH} ${effectiveBackgroundS}% ${sidebarBgL}%`);
+      rootStyle.setProperty('--sidebar-foreground', `${effectiveForegroundH} ${effectiveForegroundS}% ${effectiveForegroundL}%`);
       
-      const sidebarAccentL = effectiveAccent.l > 50 ? Math.max(0, effectiveAccent.l - (settings.themeMode === 'light' ? 5 : 10)) : Math.min(100, effectiveAccent.l + (settings.themeMode === 'light' ? 5 : 10));
-      rootStyle.setProperty('--sidebar-accent', `${effectiveAccent.h} ${effectiveAccent.s}% ${sidebarAccentL}%`);
-      rootStyle.setProperty('--sidebar-accent-foreground', sidebarAccentL > 50 ? '0 0% 5%' : '0 0% 98%');
+      rootStyle.setProperty('--sidebar-primary', `${effectivePrimaryH} ${effectivePrimaryS}% ${effectivePrimaryL}%`);
+      rootStyle.setProperty('--sidebar-primary-foreground', effectivePrimaryL > 55 ? '0 0% 5%' : '0 0% 98%');
       
-      const sidebarBorderL = sidebarBgL > 50 ? Math.max(0, sidebarBgL - 5) : Math.min(100, sidebarBgL + 5);
-      rootStyle.setProperty('--sidebar-border', `${effectiveBackground.h} ${effectiveBackground.s}% ${sidebarBorderL}%`);
+      const sidebarAccentLOffset = settings.themeMode === 'light' ? -5 : 5; // Accent for sidebar items
+      const sidebarAccentL = Math.max(0, Math.min(100, effectiveAccentL + sidebarAccentLOffset));
+      rootStyle.setProperty('--sidebar-accent', `${effectiveAccentH} ${effectiveAccentS}% ${sidebarAccentL}%`);
+      rootStyle.setProperty('--sidebar-accent-foreground', sidebarAccentL > 55 ? '0 0% 5%' : '0 0% 98%');
+      
+      const sidebarBorderLOffset = settings.themeMode === 'light' ? -5 : 5;
+      const sidebarBorderL = Math.max(0, Math.min(100, sidebarBgL + sidebarBorderLOffset));
+      rootStyle.setProperty('--sidebar-border', `${effectiveBackgroundH} ${effectiveBackgroundS}% ${sidebarBorderL}%`);
+      rootStyle.setProperty('--sidebar-ring', `${effectiveAccentH} ${effectiveAccentS}% ${Math.min(100, effectiveAccentL + (settings.themeMode === 'light' ? -10 : 10))}%`);
+      rootStyle.setProperty('--sidebar-muted-foreground', `${effectiveForegroundH} ${effectiveForegroundS}% ${Math.max(0, Math.min(100, effectiveForegroundL + mutedFgLOffset))}%`);
 
     }
   }, [settings, isLoaded]);
@@ -166,8 +202,8 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
     setSettings(prev => {
       const currentHsl = prev[colorName];
       let newComponentValue = value;
-      if (component === 'h') newComponentValue = (value % 360 + 360) % 360;
-      else newComponentValue = Math.max(0, Math.min(100, value));
+      if (component === 'h') newComponentValue = (value % 360 + 360) % 360; // Ensure 0-359
+      else newComponentValue = Math.max(0, Math.min(100, value)); // Ensure 0-100 for S and L
 
       return {
         ...prev,
@@ -181,9 +217,12 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
 
   const resetSettings = useCallback(() => {
     setSettings(DEFAULT_SETTINGS);
+     // Force re-application of default font size if uiScale was changed
+    document.documentElement.style.fontSize = `${DEFAULT_SETTINGS.uiScale}%`;
   }, []);
 
   if (!isLoaded) {
+    // Optional: Render a loading state or null
     return null; 
   }
 
@@ -193,3 +232,5 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
     </CustomizationContext.Provider>
   );
 };
+
+    

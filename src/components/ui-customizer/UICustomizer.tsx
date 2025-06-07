@@ -26,10 +26,22 @@ const ThemeColorControl: React.FC<ThemeColorControlProps> = ({ label, colorKey }
     const numValue = parseInt(value, 10);
     if (!isNaN(numValue)) {
       updateThemeColorValue(colorKey, component, numValue);
-    } else if (value === "") {
+    } else if (value === "") { // Allow clearing input, treat as 0 or a sensible default
       updateThemeColorValue(colorKey, component, 0);
     }
   };
+
+  let displayL = color.l;
+  if (settings.themeMode === 'light') {
+    if (colorKey === 'themeBackground') displayL = Math.max(90, 100 - color.l);
+    if (colorKey === 'themeForeground') displayL = Math.min(15, 100 - color.l);
+    if (colorKey === 'themePrimary') displayL = Math.min(65, Math.max(35, color.l));
+    if (colorKey === 'themeAccent') displayL = Math.min(70, Math.max(40, color.l));
+  } else {
+    if (colorKey === 'themeBackground') displayL = Math.min(20, color.l);
+    if (colorKey === 'themeForeground') displayL = Math.max(80, color.l);
+  }
+
 
   return (
     <div className="space-y-2 p-3 border border-border rounded-lg shadow-sm bg-card">
@@ -71,12 +83,8 @@ const ThemeColorControl: React.FC<ThemeColorControlProps> = ({ label, colorKey }
       </div>
        <div 
         className="w-full h-8 rounded-md border border-border mt-2" 
-        style={{ 
-          backgroundColor: settings.themeMode === 'light' && (colorKey === 'themeBackground' || colorKey === 'themeForeground')
-            ? `hsl(${color.h}, ${color.s}%, ${colorKey === 'themeBackground' ? 92 : 10}%)`
-            : `hsl(${color.h}, ${color.s}%, ${color.l}%)`
-        }}
-        title={`Base: hsl(${color.h}, ${color.s}%, ${color.l}%)`}
+        style={{ backgroundColor: `hsl(${color.h}, ${color.s}%, ${displayL}%)`}}
+        title={`Base HSL: (${color.h}, ${color.s}%, ${color.l}%)\nEffective L in ${settings.themeMode} mode: ${displayL}%`}
       />
     </div>
   );
@@ -114,7 +122,7 @@ export default function UICustomizer() {
         <section>
           <h3 className="text-xl font-semibold mb-3">Theme Colors (Base HSL)</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Customize base Hue, Saturation, and Lightness. Lightness for Background/Foreground is primarily controlled by Appearance Mode.
+            Customize base Hue, Saturation, and Lightness. Effective Lightness is adjusted by Appearance Mode.
           </p>
           <div className="space-y-4">
             <ThemeColorControl label="Background" colorKey="themeBackground" />
@@ -160,15 +168,34 @@ export default function UICustomizer() {
         </section>
         <Separator />
         <section>
-          <h3 className="text-xl font-semibold mb-4">Layout (Placeholders)</h3>
-          <div className="space-y-3 p-3 border border-border rounded-lg shadow-sm bg-card">
-            <div className="flex items-center justify-between">
-              <Label className="text-card-foreground text-sm">Sidebar Width</Label>
-              <Input type="number" defaultValue="320" className="w-20 h-8 rounded-md border-input text-xs p-1.5" disabled />
+          <h3 className="text-xl font-semibold mb-4">Typography Settings</h3>
+          <div className="space-y-4 p-3 border border-border rounded-lg shadow-sm bg-card">
+            <div>
+              <Label htmlFor="uiScale" className="text-base font-semibold text-card-foreground">UI Scale: {settings.uiScale}%</Label>
+              <Slider
+                id="uiScale"
+                min={75} max={150} step={5}
+                value={[settings.uiScale]}
+                onValueChange={(value) => updateSetting('uiScale', value[0])}
+                className="mt-2 [&>span:first-child]:h-2 [&>span>span]:bg-primary [&>span>button]:bg-primary-foreground [&>span>button]:border-primary"
+              />
             </div>
+          </div>
+        </section>
+        <Separator/>
+        <section>
+          <h3 className="text-xl font-semibold mb-4">Component Visibility</h3>
+           <div className="p-3 border border-border rounded-lg shadow-sm bg-card space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-card-foreground text-sm">Font Size (Base)</Label>
-              <Input type="number" defaultValue="16" className="w-20 h-8 rounded-md border-input text-xs p-1.5" disabled />
+              <Label htmlFor="show-object-labels-3d" className="text-base text-card-foreground">
+                Show Object Names in 3D Scene
+              </Label>
+              <Switch
+                id="show-object-labels-3d"
+                checked={settings.showObjectLabels3D}
+                onCheckedChange={(checked) => updateSetting('showObjectLabels3D', checked)}
+                className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-input"
+              />
             </div>
           </div>
         </section>
@@ -180,3 +207,5 @@ export default function UICustomizer() {
     </>
   );
 }
+
+    

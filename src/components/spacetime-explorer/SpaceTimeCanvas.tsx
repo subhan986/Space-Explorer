@@ -357,9 +357,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     }
 
     if (movedByKeyboard) {
+      isZoomingRef.current = false;
       const actualDeltaMovement = camera.position.clone().sub(cameraOriginalPosition);
       controls.target.add(actualDeltaMovement); 
-      isZoomingRef.current = false; 
     }
   }, [simulationSpeed]);
 
@@ -470,7 +470,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       keysPressedRef.current[event.key.toLowerCase()] = true;
-      if (['w', 'a', 's', 'd'].includes(event.key.toLowerCase())) {
+      if (['w', 'a', 's', 'd', 'q', 'e'].includes(event.key.toLowerCase())) {
         event.preventDefault();
       }
     };
@@ -512,7 +512,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       rendererRef.current?.dispose();
       
       const bgTexture = sceneRef.current?.background as THREE.Texture;
-      if (bgTexture && bgTexture.isTexture) { // Check if it's a texture before disposing
+      if (bgTexture && bgTexture.isTexture) { 
         bgTexture.dispose();
       }
 
@@ -549,6 +549,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       material.needsUpdate = true; 
     }
   }, [customizationSettings.gridColor, customizationSettings.gridOpacity]);
+
+  useEffect(() => {
+    objectsMapRef.current.forEach(mappedObj => {
+        if (mappedObj.nameLabel) {
+            mappedObj.nameLabel.element.style.display = customizationSettings.showObjectLabels3D ? '' : 'none';
+        }
+    });
+  }, [customizationSettings.showObjectLabels3D]);
 
 
   useEffect(() => {
@@ -629,7 +637,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           }
         } else if (controlsRef.current && selectedObjectId && !isZoomingRef.current) {
           const selectedSimObj = simulationObjectsRef.current.get(selectedObjectId);
-          // Only auto-follow if no WASDQE keys are pressed, allowing keyboard movement to take precedence
           if (selectedSimObj && isValidVector(selectedSimObj.threePosition) && !Object.values(keysPressedRef.current).some(pressed => pressed)) { 
             controlsRef.current.target.lerp(selectedSimObj.threePosition, 0.1); 
           }
@@ -768,6 +775,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         const labelDiv = document.createElement('div');
         labelDiv.className = 'object-name-label';
         labelDiv.textContent = simObjInternal.name;
+        labelDiv.style.display = customizationSettings.showObjectLabels3D ? '' : 'none';
         const nameLabel = new CSS2DObject(labelDiv);
         nameLabel.position.set(0, simObjInternal.radius * 1.5 + 5, 0); 
         threeMesh.add(nameLabel);
@@ -807,6 +815,11 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         mappedObj.objectName = objData.name; 
         simObjInternal.type = objData.type;
 
+        if (mappedObj.nameLabel) {
+           mappedObj.nameLabel.element.style.display = customizationSettings.showObjectLabels3D ? '' : 'none';
+        }
+
+
         if (simObjInternal.radius !== propRadius) {
            simObjInternal.radius = propRadius;
            threeMesh.geometry.dispose(); 
@@ -843,11 +856,10 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             material.roughness = 0.8;
             threeMesh.castShadow = false;
             threeMesh.receiveShadow = false;
-        } else if (simObjInternal.name === "Earth" || simObjInternal.name === "Moon" || simObjInternal.name === "Jupiter" || simObjInternal.name === "Ceres" || simObjInternal.name === "Mercury" || simObjInternal.name === "Venus" || simObjInternal.name === "Mars" || simObjInternal.name === "Saturn" || simObjInternal.name === "Uranus" || simObjInternal.name === "Neptune") {
+        } else if (simObjInternal.name === "Earth" || simObjInternal.name === "Moon" || simObjInternal.name === "Jupiter" || simObjInternal.name === "Ceres" || simObjInternal.name === "Mercury" || simObjInternal.name === "Venus" || simObjInternal.name === "Mars" || simObjInternal.name === "Saturn" || simObjInternal.name === "Uranus" || simObjInternal.name === "Neptune") { 
             material.metalness = 0.1;
             material.roughness = 0.7;
-            material.emissive?.set(0x000000); 
-            material.emissiveIntensity = 0;
+            material.emissive?.set(0x000000);
             threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode;
             threeMesh.receiveShadow = true;
         } else if (simObjInternal.name === "Black Hole" || simObjInternal.name === "Sagittarius A*") {
@@ -892,7 +904,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 diskMaterial.color.set(0xFFE066); 
                 diskMaterial.opacity = 0.7; 
                 diskMaterial.blending = THREE.AdditiveBlending;
-                diskMaterial.castShadow = false; // Ensure these are set
+                diskMaterial.castShadow = false; 
                 diskMaterial.receiveShadow = false;
                 diskMaterial.needsUpdate = true; 
             }
@@ -963,7 +975,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       updateTrajectories(); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [objects, simulationStatus, isValidVector, deformGrid, updateTrajectories, showShadows, lightingMode]); 
+  }, [objects, simulationStatus, isValidVector, deformGrid, updateTrajectories, showShadows, lightingMode, customizationSettings.showObjectLabels3D]); 
 
   useEffect(() => {
     if (simulationStatus === 'stopped') {
@@ -1005,6 +1017,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             if (mappedObj.nameLabel.element.textContent !== objData.name) {
                  mappedObj.nameLabel.element.textContent = objData.name;
             }
+            mappedObj.nameLabel.element.style.display = customizationSettings.showObjectLabels3D ? '' : 'none';
           }
 
 
@@ -1091,7 +1104,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       deformGrid(); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simulationStatus, objects, isValidVector, updateTrajectories, deformGrid, showShadows, lightingMode]); 
+  }, [simulationStatus, objects, isValidVector, updateTrajectories, deformGrid, showShadows, lightingMode, customizationSettings.showObjectLabels3D]); 
 
 
   return (
@@ -1101,3 +1114,4 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
 export default SpaceTimeCanvas;
 
+    
