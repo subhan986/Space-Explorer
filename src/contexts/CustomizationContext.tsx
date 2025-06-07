@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
-interface HSLColor {
+export interface HSLColor { // Exporting HSLColor
   h: number;
   s: number;
   l: number;
@@ -23,10 +23,10 @@ interface CustomizationSettings {
 
 const DEFAULT_SETTINGS: CustomizationSettings = {
   themeMode: 'dark',
-  themeBackground: { h: 0, s: 0, l: 13 },
-  themeForeground: { h: 0, s: 0, l: 90 },
-  themePrimary: { h: 220, s: 43, l: 41 },
-  themeAccent: { h: 271, s: 76, l: 53 },
+  themeBackground: { h: 0, s: 0, l: 13 }, // Matches 'Graphite' in new palette
+  themeForeground: { h: 0, s: 0, l: 90 }, // Matches 'Light Gray' in new palette
+  themePrimary: { h: 220, s: 43, l: 41 }, // Matches 'Deep Space Blue' in new palette
+  themeAccent: { h: 271, s: 76, l: 53 }, // Matches 'Violet' in new palette
   gridColor: '#8A2BE2',
   gridOpacity: 0.3,
   uiScale: 100,
@@ -36,7 +36,6 @@ const DEFAULT_SETTINGS: CustomizationSettings = {
 interface CustomizationContextType {
   settings: CustomizationSettings;
   updateSetting: <K extends keyof CustomizationSettings>(key: K, value: CustomizationSettings[K]) => void;
-  updateThemeColorValue: (colorName: 'themeBackground' | 'themeForeground' | 'themePrimary' | 'themeAccent', component: 'h' | 's' | 'l', value: number) => void;
   resetSettings: () => void;
 }
 
@@ -49,8 +48,6 @@ export const useCustomization = () => {
   }
   return context;
 };
-
-const hslToCssVarString = (hsl: HSLColor) => `${hsl.h} ${hsl.s}% ${hsl.l}%`;
 
 export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<CustomizationSettings>(DEFAULT_SETTINGS);
@@ -126,9 +123,8 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
         effectiveBackgroundL = settings.themeBackground.l < 50 ? settings.themeBackground.l : Math.min(20, 100 - settings.themeBackground.l);
         effectiveForegroundL = settings.themeForeground.l > 50 ? settings.themeForeground.l : Math.max(80, 100 - settings.themeForeground.l);
 
-        // Keep primary and accent lightness as is for dark mode, or adjust if needed
-        effectivePrimaryL = settings.themePrimary.l; // Or some adjustment like Math.max(30, settings.themePrimary.l)
-        effectiveAccentL = settings.themeAccent.l;   // Or Math.max(35, settings.themeAccent.l)
+        effectivePrimaryL = settings.themePrimary.l;
+        effectiveAccentL = settings.themeAccent.l;
       }
 
       rootStyle.setProperty('--background', `${effectiveBackgroundH} ${effectiveBackgroundS}% ${effectiveBackgroundL}%`);
@@ -150,10 +146,10 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
       rootStyle.setProperty('--secondary', `${effectivePrimaryH} ${Math.max(0, effectivePrimaryS - 15)}% ${secondaryL}%`);
       rootStyle.setProperty('--secondary-foreground', secondaryL > 55 ? '0 0% 5%' : '0 0% 98%');
       
-      const mutedLOffset = settings.themeMode === 'light' ? 5 : -5; // Muted should be closer to background
+      const mutedLOffset = settings.themeMode === 'light' ? 5 : -5; 
       const mutedL = Math.max(0, Math.min(100, effectiveBackgroundL + mutedLOffset));
       rootStyle.setProperty('--muted', `${effectiveBackgroundH} ${effectiveBackgroundS}% ${mutedL}%`);
-      const mutedFgLOffset = settings.themeMode === 'light' ? 30 : -30; // Muted FG should contrast with muted
+      const mutedFgLOffset = settings.themeMode === 'light' ? 30 : -30; 
       const mutedFgL = Math.max(0, Math.min(100, effectiveForegroundL + mutedFgLOffset));
       rootStyle.setProperty('--muted-foreground', `${effectiveForegroundH} ${effectiveForegroundS}% ${mutedFgL}%`);
 
@@ -168,7 +164,7 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
 
 
       // Sidebar specific variables
-      const sidebarBgLOffset = settings.themeMode === 'light' ? 2 : -2; // Slightly off from main background
+      const sidebarBgLOffset = settings.themeMode === 'light' ? 2 : -2; 
       const sidebarBgL = Math.max(0, Math.min(100, effectiveBackgroundL + sidebarBgLOffset));
       rootStyle.setProperty('--sidebar-background', `${effectiveBackgroundH} ${effectiveBackgroundS}% ${sidebarBgL}%`);
       rootStyle.setProperty('--sidebar-foreground', `${effectiveForegroundH} ${effectiveForegroundS}% ${effectiveForegroundL}%`);
@@ -176,7 +172,7 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
       rootStyle.setProperty('--sidebar-primary', `${effectivePrimaryH} ${effectivePrimaryS}% ${effectivePrimaryL}%`);
       rootStyle.setProperty('--sidebar-primary-foreground', effectivePrimaryL > 55 ? '0 0% 5%' : '0 0% 98%');
       
-      const sidebarAccentLOffset = settings.themeMode === 'light' ? -5 : 5; // Accent for sidebar items
+      const sidebarAccentLOffset = settings.themeMode === 'light' ? -5 : 5; 
       const sidebarAccentL = Math.max(0, Math.min(100, effectiveAccentL + sidebarAccentLOffset));
       rootStyle.setProperty('--sidebar-accent', `${effectiveAccentH} ${effectiveAccentS}% ${sidebarAccentL}%`);
       rootStyle.setProperty('--sidebar-accent-foreground', sidebarAccentL > 55 ? '0 0% 5%' : '0 0% 98%');
@@ -194,43 +190,18 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
     setSettings(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  const updateThemeColorValue = useCallback((
-    colorName: 'themeBackground' | 'themeForeground' | 'themePrimary' | 'themeAccent',
-    component: 'h' | 's' | 'l',
-    value: number
-  ) => {
-    setSettings(prev => {
-      const currentHsl = prev[colorName];
-      let newComponentValue = value;
-      if (component === 'h') newComponentValue = (value % 360 + 360) % 360; // Ensure 0-359
-      else newComponentValue = Math.max(0, Math.min(100, value)); // Ensure 0-100 for S and L
-
-      return {
-        ...prev,
-        [colorName]: {
-          ...currentHsl,
-          [component]: newComponentValue,
-        },
-      };
-    });
-  }, []);
-
   const resetSettings = useCallback(() => {
     setSettings(DEFAULT_SETTINGS);
-     // Force re-application of default font size if uiScale was changed
     document.documentElement.style.fontSize = `${DEFAULT_SETTINGS.uiScale}%`;
   }, []);
 
   if (!isLoaded) {
-    // Optional: Render a loading state or null
     return null; 
   }
 
   return (
-    <CustomizationContext.Provider value={{ settings, updateSetting, updateThemeColorValue, resetSettings }}>
+    <CustomizationContext.Provider value={{ settings, updateSetting, resetSettings }}>
       {children}
     </CustomizationContext.Provider>
   );
 };
-
-    

@@ -4,20 +4,14 @@
 
 import { SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+// Input is no longer needed for theme HSL
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { useCustomization } from "@/contexts/CustomizationContext";
-// HexColorPicker is no longer needed here for grid color
+import { useCustomization, HSLColor } from "@/contexts/CustomizationContext";
 import React from "react";
 import { Check } from "lucide-react";
-
-interface ThemeColorControlProps {
-  label: string;
-  colorKey: 'themeBackground' | 'themeForeground' | 'themePrimary' | 'themeAccent';
-}
 
 const GRID_COLOR_PALETTE = [
   '#8A2BE2', // Violet (Original Default)
@@ -30,77 +24,104 @@ const GRID_COLOR_PALETTE = [
   '#FFD700', // Gold
 ];
 
-const ThemeColorControl: React.FC<ThemeColorControlProps> = ({ label, colorKey }) => {
-  const { settings, updateThemeColorValue } = useCustomization();
-  const color = settings[colorKey];
+// Define palettes for theme colors
+interface PaletteOption {
+  name: string;
+  hsl: HSLColor;
+}
 
-  const handleInputChange = (component: 'h' | 's' | 'l', value: string) => {
-    const numValue = parseInt(value, 10);
-    if (!isNaN(numValue)) {
-      updateThemeColorValue(colorKey, component, numValue);
-    } else if (value === "") { 
-      updateThemeColorValue(colorKey, component, 0);
+const themeBackgroundPalettes: PaletteOption[] = [
+  { name: 'Graphite', hsl: { h: 0, s: 0, l: 13 } },
+  { name: 'Space Blue', hsl: { h: 220, s: 25, l: 15 } },
+  { name: 'Snow', hsl: { h: 0, s: 0, l: 97 } },
+  { name: 'Paper', hsl: { h: 40, s: 30, l: 95 } },
+];
+
+const themeForegroundPalettes: PaletteOption[] = [
+  { name: 'Light Gray', hsl: { h: 0, s: 0, l: 90 } },
+  { name: 'Off-White', hsl: { h: 30, s: 20, l: 85 } },
+  { name: 'Dark Slate', hsl: { h: 0, s: 0, l: 10 } },
+  { name: 'Charcoal Text', hsl: { h: 210, s: 10, l: 20 } },
+];
+
+const themePrimaryPalettes: PaletteOption[] = [
+  { name: 'Deep Space Blue', hsl: { h: 220, s: 43, l: 41 } },
+  { name: 'Forest Green', hsl: { h: 140, s: 40, l: 35 } },
+  { name: 'Crimson Red', hsl: { h: 0, s: 50, l: 45 } },
+  { name: 'Royal Purple', hsl: { h: 270, s: 50, l: 50 } },
+  { name: 'Ocean Teal', hsl: { h: 175, s: 55, l: 40 } },
+];
+
+const themeAccentPalettes: PaletteOption[] = [
+  { name: 'Violet', hsl: { h: 271, s: 76, l: 53 } },
+  { name: 'Teal Burst', hsl: { h: 180, s: 60, l: 45 } },
+  { name: 'Sunset Orange', hsl: { h: 30, s: 80, l: 55 } },
+  { name: 'Hot Pink', hsl: { h: 330, s: 70, l: 60 } },
+  { name: 'Lime Green', hsl: { h: 90, s: 65, l: 50 } },
+];
+
+
+interface ThemePaletteSelectorProps {
+  label: string;
+  colorKey: 'themeBackground' | 'themeForeground' | 'themePrimary' | 'themeAccent';
+  palette: PaletteOption[];
+}
+
+const ThemePaletteSelector: React.FC<ThemePaletteSelectorProps> = ({ label, colorKey, palette }) => {
+  const { settings, updateSetting } = useCustomization();
+  const selectedHsl = settings[colorKey];
+
+  const getEffectiveDisplayL = (baseHsl: HSLColor): number => {
+    let displayL = baseHsl.l;
+     if (settings.themeMode === 'light') {
+        if (colorKey === 'themeBackground') displayL = baseHsl.l > 50 ? baseHsl.l : Math.max(90, 100 - baseHsl.l);
+        else if (colorKey === 'themeForeground') displayL = baseHsl.l < 50 ? baseHsl.l : Math.min(15, 100 - baseHsl.l);
+        else if (colorKey === 'themePrimary') displayL = Math.min(65, Math.max(35, baseHsl.l));
+        else if (colorKey === 'themeAccent') displayL = Math.min(70, Math.max(40, baseHsl.l));
+    } else { // Dark mode
+        if (colorKey === 'themeBackground') displayL = baseHsl.l < 50 ? baseHsl.l : Math.min(20, 100 - baseHsl.l);
+        else if (colorKey === 'themeForeground') displayL = baseHsl.l > 50 ? baseHsl.l : Math.max(80, 100 - baseHsl.l);
+        // For primary and accent in dark mode, use base lightness or slightly adjust if needed
+        else if (colorKey === 'themePrimary') displayL = baseHsl.l;
+        else if (colorKey === 'themeAccent') displayL = baseHsl.l;
     }
+    return Math.max(0, Math.min(100, displayL));
   };
-
-  let displayL = color.l;
-  if (settings.themeMode === 'light') {
-    if (colorKey === 'themeBackground') displayL = Math.max(90, 100 - color.l);
-    if (colorKey === 'themeForeground') displayL = Math.min(15, 100 - color.l);
-    if (colorKey === 'themePrimary') displayL = Math.min(65, Math.max(35, color.l));
-    if (colorKey === 'themeAccent') displayL = Math.min(70, Math.max(40, color.l));
-  } else {
-    if (colorKey === 'themeBackground') displayL = Math.min(20, color.l);
-    if (colorKey === 'themeForeground') displayL = Math.max(80, color.l);
-  }
 
 
   return (
     <div className="space-y-2 p-3 border border-border rounded-lg shadow-sm bg-card">
       <Label className="text-base font-semibold text-card-foreground">{label}</Label>
-      <div className="grid grid-cols-3 gap-2 items-center">
-        <div>
-          <Label htmlFor={`${colorKey}-h`} className="text-xs text-muted-foreground db-1">H (0-359)</Label>
-          <Input
-            id={`${colorKey}-h`}
-            type="number"
-            min="0" max="359" step="1"
-            value={color.h}
-            onChange={(e) => handleInputChange('h', e.target.value)}
-            className="w-full h-9 text-sm p-2"
-          />
-        </div>
-        <div>
-          <Label htmlFor={`${colorKey}-s`} className="text-xs text-muted-foreground db-1">S (0-100%)</Label>
-          <Input
-            id={`${colorKey}-s`}
-            type="number"
-            min="0" max="100" step="1"
-            value={color.s}
-            onChange={(e) => handleInputChange('s', e.target.value)}
-            className="w-full h-9 text-sm p-2"
-          />
-        </div>
-        <div>
-          <Label htmlFor={`${colorKey}-l`} className="text-xs text-muted-foreground db-1">L (0-100%)</Label>
-          <Input
-            id={`${colorKey}-l`}
-            type="number"
-            min="0" max="100" step="1"
-            value={color.l}
-            onChange={(e) => handleInputChange('l', e.target.value)}
-            className="w-full h-9 text-sm p-2"
-          />
-        </div>
+      <div className="flex flex-wrap gap-2">
+        {palette.map((option) => {
+          const isSelected = selectedHsl.h === option.hsl.h && selectedHsl.s === option.hsl.s && selectedHsl.l === option.hsl.l;
+          const effectiveL = getEffectiveDisplayL(option.hsl);
+          const displayColor = `hsl(${option.hsl.h}, ${option.hsl.s}%, ${effectiveL}%)`;
+          
+          return (
+            <button
+              key={option.name}
+              type="button"
+              title={`${option.name} (Base: H${option.hsl.h} S${option.hsl.s} L${option.hsl.l})`}
+              className={`w-10 h-10 rounded-md border-2 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+                          ${isSelected ? 'border-primary ring-2 ring-primary' : 'border-border/50 hover:border-muted-foreground'}`}
+              style={{ backgroundColor: displayColor }}
+              onClick={() => updateSetting(colorKey, option.hsl)}
+            >
+              {isSelected && (
+                <Check
+                  className="w-5 h-5 text-primary-foreground opacity-90 mx-auto"
+                  style={{ filter: effectiveL > 70 ? 'invert(1)' : 'none' }}
+                />
+              )}
+            </button>
+          );
+        })}
       </div>
-       <div 
-        className="w-full h-8 rounded-md border border-border mt-2" 
-        style={{ backgroundColor: `hsl(${color.h}, ${color.s}%, ${displayL}%)`}}
-        title={`Base HSL: (${color.h}, ${color.s}%, ${color.l}%)\nEffective L in ${settings.themeMode} mode: ${displayL}%`}
-      />
     </div>
   );
 };
+
 
 export default function UICustomizer() {
   const { settings, updateSetting, resetSettings } = useCustomization();
@@ -132,15 +153,15 @@ export default function UICustomizer() {
         </section>
         <Separator/>
         <section>
-          <h3 className="text-xl font-semibold mb-3">Theme Colors (Base HSL)</h3>
+          <h3 className="text-xl font-semibold mb-3">Theme Colors</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Customize base Hue, Saturation, and Lightness. Effective Lightness is adjusted by Appearance Mode.
+            Select base colors. Effective lightness is adjusted by Appearance Mode.
           </p>
           <div className="space-y-4">
-            <ThemeColorControl label="Background" colorKey="themeBackground" />
-            <ThemeColorControl label="Foreground" colorKey="themeForeground" />
-            <ThemeColorControl label="Primary" colorKey="themePrimary" />
-            <ThemeColorControl label="Accent" colorKey="themeAccent" />
+            <ThemePaletteSelector label="Background" colorKey="themeBackground" palette={themeBackgroundPalettes} />
+            <ThemePaletteSelector label="Foreground" colorKey="themeForeground" palette={themeForegroundPalettes} />
+            <ThemePaletteSelector label="Primary" colorKey="themePrimary" palette={themePrimaryPalettes} />
+            <ThemePaletteSelector label="Accent" colorKey="themeAccent" palette={themeAccentPalettes} />
           </div>
         </section>
         <Separator />
@@ -220,5 +241,3 @@ export default function UICustomizer() {
     </>
   );
 }
-
-    
