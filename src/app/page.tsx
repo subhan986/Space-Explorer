@@ -14,7 +14,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import UICustomizer from '@/components/ui-customizer/UICustomizer';
-// Removed CustomizationProvider import as it's no longer used here
 import ObjectDetailsPanel from '@/components/spacetime-explorer/ObjectDetailsPanel';
 
 
@@ -234,9 +233,8 @@ export default function SpacetimeExplorerPage() {
     : selectedObjectData;
 
   return (
-    // Removed CustomizationProvider from here
       <div className="flex flex-col h-screen bg-background text-foreground">
-        <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-background z-20">
+        <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-[hsl(var(--background))/0.8] backdrop-blur-md z-20">
           <div className="flex gap-2">
             <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
               <SheetTrigger asChild>
@@ -307,7 +305,6 @@ export default function SpacetimeExplorerPage() {
             onClose={handleDetailsPanelClose}
         />
       </div>
-    // Removed CustomizationProvider from here
   );
 }
 
@@ -318,3 +315,4 @@ function setSetLightingMode(mode: LightingMode) {
   // in a scenario where the state setter itself wasn't directly passable.
   // However, in the current setup, `setLightingMode` from `useState` is passed directly.
 }
+
