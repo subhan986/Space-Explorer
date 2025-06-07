@@ -234,7 +234,7 @@ export default function SpacetimeExplorerPage() {
 
   return (
       <div className="flex flex-col h-screen bg-background text-foreground">
-        <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-[hsl(var(--background))/0.8] backdrop-blur-md z-20">
+        <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-[hsl(var(--background))/0.5] backdrop-blur-md z-20">
           <div className="flex gap-2">
             <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
               <SheetTrigger asChild>
