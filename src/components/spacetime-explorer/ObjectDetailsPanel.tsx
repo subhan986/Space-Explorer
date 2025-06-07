@@ -39,7 +39,7 @@ const DetailRow: React.FC<DetailRowProps> = ({ icon, label, value, unit }) => (
 
 const CompositionRow: React.FC<{ component: CompositionComponent }> = ({ component }) => (
   <div className="flex items-center justify-between py-1.5 px-1 rounded-md hover:bg-muted/20 transition-colors">
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 min-w-0"> {/* Added min-w-0 to allow shrinking */}
       <div 
         style={{ backgroundColor: component.iconColor || 'hsl(var(--muted))' }} 
         className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
@@ -47,7 +47,10 @@ const CompositionRow: React.FC<{ component: CompositionComponent }> = ({ compone
       <span className="text-sm text-foreground truncate" title={component.name}>{component.name}</span>
       <ChevronDown className="h-3 w-3 text-muted-foreground/70 flex-shrink-0" />
     </div>
-    <div className="bg-input px-2 py-0.5 rounded-sm text-xs text-foreground font-mono shadow-sm truncate" title={component.value}>
+    <div 
+      className="bg-input px-2 py-0.5 rounded-sm text-xs text-foreground font-mono shadow-sm truncate min-w-0 ml-2" /* Added min-w-0 and ml-2 */
+      title={component.value}
+    >
       {component.value}
     </div>
   </div>
@@ -206,3 +209,4 @@ const ObjectDetailsPanel: React.FC<ObjectDetailsPanelProps> = ({ selectedObject,
 };
 
 export default ObjectDetailsPanel;
+
