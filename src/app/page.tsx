@@ -8,16 +8,14 @@ import ControlPanel from '@/components/spacetime-explorer/ControlPanel';
 import type { SceneObject, LightingMode, SavedSimulationState } from '@/types/spacetime';
 import { PRESET_SCENARIOS } from '@/lib/preset-scenarios';
 import { DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
-import { Palette } from 'lucide-react'; // Removed Settings icon
+import { Palette } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import UICustomizer from '@/components/ui-customizer/UICustomizer';
-import { CustomizationProvider } from '@/contexts/CustomizationContext';
+// Removed CustomizationProvider import as it's no longer used here
 import ObjectDetailsPanel from '@/components/spacetime-explorer/ObjectDetailsPanel';
-// ObjectManagementPanel import is no longer needed here as it's not directly used by page.tsx for the removed header button
-// import ObjectManagementPanel from '@/components/spacetime-explorer/ObjectManagementPanel';
 
 
 const SpaceTimeCanvas = dynamic(() => import('@/components/spacetime-explorer/SpaceTimeCanvas'), {
@@ -44,7 +42,6 @@ export default function SpacetimeExplorerPage() {
   const [currentSimulatedDate, setCurrentSimulatedDate] = useState<Date>(new Date());
   const { toast } = useToast();
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
-  // const [isControlsPanelOpen, setIsControlsPanelOpen] = useState(false); // Removed state for the header controls panel
 
 
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
@@ -237,7 +234,7 @@ export default function SpacetimeExplorerPage() {
     : selectedObjectData;
 
   return (
-    <CustomizationProvider>
+    // Removed CustomizationProvider from here
       <div className="flex flex-col h-screen bg-background text-foreground">
         <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-background z-20">
           <div className="flex gap-2">
@@ -253,7 +250,6 @@ export default function SpacetimeExplorerPage() {
               </SheetContent>
             </Sheet>
             
-            {/* Removed Settings button and its Sheet for ObjectManagementPanel */}
           </div>
 
           <h1 className="text-md md:text-lg font-semibold text-foreground flex-1 text-center truncate px-2">
@@ -311,7 +307,7 @@ export default function SpacetimeExplorerPage() {
             onClose={handleDetailsPanelClose}
         />
       </div>
-    </CustomizationProvider>
+    // Removed CustomizationProvider from here
   );
 }
 
