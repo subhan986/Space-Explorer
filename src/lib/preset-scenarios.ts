@@ -8,7 +8,6 @@ import {
   MERCURY_ORBIT_RADIUS, VENUS_ORBIT_RADIUS, EARTH_ORBIT_RADIUS,
   MARS_ORBIT_RADIUS, JUPITER_ORBIT_RADIUS, SATURN_ORBIT_RADIUS,
   URANUS_ORBIT_RADIUS, NEPTUNE_ORBIT_RADIUS
-  // MOON_ORBIT_RADIUS_AROUND_EARTH, // Moon constant no longer needed here
 } from './constants';
 
 // Helper to calculate orbital velocity
@@ -37,7 +36,7 @@ const getPlanetWithOrbit = (
   const velocityZ = velocityMagnitude * Math.cos(angleRadians);
 
   return {
-    id: `preset_${planetDef.name.toLowerCase().replace(/\s+/g, '')}`,
+    id: `preset_${planetDef.name.toLowerCase().replace(/\s+/g, '')}_${Date.now()}`, // Ensure unique IDs for presets
     type: planetDef.type,
     name: planetDef.name,
     mass: planetDef.mass,
@@ -52,11 +51,11 @@ const getPlanetWithOrbit = (
 export const PRESET_SCENARIOS: Record<string, { name: string; description: string; objects: SceneObject[] }> = {
   realSolarSystem: {
     name: "Real Solar System",
-    description: "The Sun and 8 planets in approximate orbits.", // Updated description
+    description: "The Sun and 8 planets in approximate orbits.",
     objects: (() => {
       const sun = {
         ...REAL_OBJECT_DEFINITIONS.SUN,
-        id: 'preset_sun_rss',
+        id: `preset_sun_rss_${Date.now()}`,
         position: { x: 0, y: 0, z: 0 },
         velocity: { x: 0, y: 0, z: 0 },
       } as SceneObject;
@@ -71,34 +70,7 @@ export const PRESET_SCENARIOS: Record<string, { name: string; description: strin
         getPlanetWithOrbit('URANUS', URANUS_ORBIT_RADIUS, SUN_SIMULATION_MASS, 270),
         getPlanetWithOrbit('NEPTUNE', NEPTUNE_ORBIT_RADIUS, SUN_SIMULATION_MASS, 315),
       ];
-
-      // Moon creation logic removed
-      // const earth = planets.find(p => p.name === 'Earth');
-      // let moon: SceneObject | null = null;
-      // if (earth) {
-      //   const moonDef = REAL_OBJECT_DEFINITIONS.MOON;
-      //   const moonOrbitalVelocity = calculateOrbitalVelocity(earth.mass, MOON_ORBIT_RADIUS_AROUND_EARTH);
-      //   moon = {
-      //     id: 'preset_moon_rss',
-      //     type: moonDef.type,
-      //     name: moonDef.name,
-      //     mass: moonDef.mass,
-      //     radius: moonDef.radius,
-      //     color: moonDef.color,
-      //     position: {
-      //       x: earth.position.x + MOON_ORBIT_RADIUS_AROUND_EARTH,
-      //       y: earth.position.y,
-      //       z: earth.position.z,
-      //     },
-      //     velocity: {
-      //       x: earth.velocity.x,
-      //       y: earth.velocity.y,
-      //       z: earth.velocity.z + moonOrbitalVelocity,
-      //     },
-      //   };
-      // }
-
-      return [sun, ...planets]; // Removed Moon from the return array
+      return [sun, ...planets];
     })(),
   },
   binaryPair: {
@@ -106,12 +78,12 @@ export const PRESET_SCENARIOS: Record<string, { name: string; description: strin
     description: "Two stars orbiting their common center of mass.",
     objects: [
       {
-        id: 'preset_starA', type: 'massive', name: 'Star Alpha', mass: 80000,
+        id: `preset_starA_${Date.now()}`, type: 'massive', name: 'Star Alpha', mass: 80000,
         radius: 25, color: '#FF8C00',
         position: { x: -150, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: 13 }
       },
       {
-        id: 'preset_starB', type: 'massive', name: 'Star Beta', mass: 60000,
+        id: `preset_starB_${Date.now()}`, type: 'massive', name: 'Star Beta', mass: 60000,
         radius: 20, color: '#ADD8E6',
         position: { x: 200, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: -10 }
       }
@@ -122,16 +94,91 @@ export const PRESET_SCENARIOS: Record<string, { name: string; description: strin
     description: "A comet passing by a massive star for a gravitational assist.",
     objects: [
         {
-            id: 'preset_heavyStar', type: 'massive', name: 'Graviton Prime', mass: 200000,
+            id: `preset_heavyStar_cs_${Date.now()}`, type: 'massive', name: 'Graviton Prime', mass: 200000,
             radius: 40, color: '#DC143C',
             position: { x: 0, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: 0 }
         },
         {
-            id: 'preset_comet', type: 'orbiter', name: 'Icarus Comet', mass: 1,
+            id: `preset_comet_cs_${Date.now()}`, type: 'orbiter', name: 'Icarus Comet', mass: 1,
             radius: 2, color: '#E0FFFF',
             position: { x: 800, y: 0, z: -800 }, velocity: { x: -15, y: 0, z: 5 }
         },
     ]
+  },
+  sunSupernova: {
+    name: "Sun's Demise (Supernova)",
+    description: "Our Sun is impacted by a rogue object, triggering a supernova.",
+    objects: [
+      {
+        ...(REAL_OBJECT_DEFINITIONS.SUN), // Spread the Sun's properties
+        id: `preset_sun_sn_${Date.now()}`,
+        position: { x: 0, y: 0, z: 0 },
+        velocity: { x: 0, y: 0, z: 0 },
+      },
+      {
+        id: `preset_impactor_sun_${Date.now()}`,
+        type: 'orbiter', // Must be non-star to fit collision logic
+        name: 'Rogue Impactor',
+        mass: REAL_OBJECT_DEFINITIONS.SUN.mass, // Mass to trigger supernova
+        radius: 1, // Visually small
+        color: '#303030', // Dark, inconspicuous
+        position: { x: REAL_OBJECT_DEFINITIONS.SUN.radius + 2, y: 0, z: 0 }, // Start very close
+        velocity: { x: -50, y: 0, z: 0 }, // Move directly towards the Sun
+      }
+    ]
+  },
+  blackHoleGenesis: {
+    name: "Black Hole Genesis",
+    description: "A very massive star collapses into a black hole after a supernova.",
+    objects: [
+      {
+        id: `preset_massive_star_bhg_${Date.now()}`,
+        type: 'massive',
+        name: 'Star Gigantus',
+        mass: 300000, // Above BLACK_HOLE_MIN_ORIGINAL_MASS (250000)
+        radius: 50,
+        color: '#ADD8E6', // Light Blue supergiant
+        position: { x: 0, y: 0, z: 0 },
+        velocity: { x: 0, y: 0, z: 0 },
+      },
+      {
+        id: `preset_impactor_bhg_${Date.now()}`,
+        type: 'orbiter',
+        name: 'Catalyst Impactor',
+        mass: 300000, // Match star's mass to trigger
+        radius: 2,
+        color: '#404040',
+        position: { x: 50 + 3, y: 0, z: 0 }, // Star radius + impactor radius + small gap
+        velocity: { x: -75, y: 0, z: 0 }, // Fast impact
+      }
+    ]
+  },
+  neutronStarForge: {
+    name: "Neutron Star Forge",
+    description: "A heavy star undergoes supernova and forms a dense neutron star.",
+    objects: [
+      {
+        id: `preset_heavy_star_nsf_${Date.now()}`,
+        type: 'massive',
+        name: 'Star Magnus',
+        mass: 100000, // Between NEUTRON_STAR_MIN_ORIGINAL_MASS (75k) and BLACK_HOLE_MIN_ORIGINAL_MASS (250k)
+        radius: 35,
+        color: '#FFDEAD', // NavajoWhite, a large star
+        position: { x: 0, y: 0, z: 0 },
+        velocity: { x: 0, y: 0, z: 0 },
+      },
+      {
+        id: `preset_impactor_nsf_${Date.now()}`,
+        type: 'orbiter',
+        name: 'Trigger Impactor',
+        mass: 100000, // Match star's mass to trigger
+        radius: 1.5,
+        color: '#383838',
+        position: { x: 35 + 2.5, y: 0, z: 0 }, // Star radius + impactor radius + small gap
+        velocity: { x: -60, y: 0, z: 0 }, // Fast impact
+      }
+    ]
   }
 };
 
+    
