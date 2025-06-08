@@ -33,3 +33,7 @@ export const NEPTUNE_ORBIT_RADIUS = 2500;
 
 export const MOON_ORBIT_RADIUS_AROUND_EARTH = 10; // Reduced from 30 for stability
 
+export const MAX_PARTICLES = 10000; // Maximum number of particles for collision/supernova effects
+export const SUPERNOVA_DURATION = 2.5; // seconds
+export const SUPERNOVA_MAX_RADIUS_MULTIPLIER = 15;
+export const SUPERNOVA_PARTICLE_COUNT = 500; // Number of particles spawned by a supernova event (per burst or total)

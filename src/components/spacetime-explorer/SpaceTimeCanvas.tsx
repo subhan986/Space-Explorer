@@ -4,7 +4,7 @@
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import type { SceneObject, ObjectType, LightingMode, Vector3 } from '@/types/spacetime';
-import { GRID_SIZE, GRID_DIVISIONS, INITIAL_CAMERA_POSITION, G_CONSTANT } from '@/lib/constants';
+import { GRID_SIZE, GRID_DIVISIONS, INITIAL_CAMERA_POSITION, G_CONSTANT, SUPERNOVA_DURATION, SUPERNOVA_MAX_RADIUS_MULTIPLIER, SUPERNOVA_PARTICLE_COUNT, MAX_PARTICLES } from '@/lib/constants';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
@@ -19,10 +19,21 @@ interface SpaceTimeCanvasProps {
   showTrajectories: boolean;
   trajectoryLength: number;
   onObjectsCollidedAndMerged: (absorbedObjectId: string, absorberObjectId: string, absorbedObjectMass: number) => void;
+  onRemoveObject: (objectId: string) => void; // Added for supernova removal
   showShadows: boolean;
   lightingMode: LightingMode;
   onSelectedObjectUpdate?: (objectState: SceneObject) => void;
   onSimulatedTimeDeltaUpdate?: (simDaysDelta: number) => void;
+}
+
+interface SupernovaState {
+  progress: number; // 0 to 1
+  duration: number; // seconds
+  originalRadius: number;
+  maxRadius: number;
+  originalColor: THREE.Color;
+  particleSpawnTimer: number; // Timer to control particle emission rate
+  particleSpawnInterval: number; // Interval between particle bursts
 }
 
 interface SimulationObjectInternal {
@@ -34,6 +45,8 @@ interface SimulationObjectInternal {
   radius: number;
   color: string;
   name: string;
+  isGoingSupernova?: boolean;
+  supernovaState?: SupernovaState;
 }
 
 interface MappedObject {
@@ -49,10 +62,9 @@ interface ActiveParticle {
   lifetime: number;
   initialLifetime: number;
   color: THREE.Color;
-  size: number; // Though PointsMaterial size is global, can be used for custom shaders later
+  size: number;
 }
 
-const MAX_PARTICLES = 5000; // Maximum number of particles to manage for performance
 
 const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   objects,
@@ -63,6 +75,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   showTrajectories,
   trajectoryLength,
   onObjectsCollidedAndMerged,
+  onRemoveObject,
   showShadows,
   lightingMode,
   onSelectedObjectUpdate,
@@ -99,42 +112,86 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
   const keysPressedRef = useRef<{ [key: string]: boolean }>({});
   const cameraMoveSpeed = 100.0;
 
-  // Particle System Refs
   const activeParticlesRef = useRef<ActiveParticle[]>([]);
   const particleSystemRef = useRef<THREE.Points | null>(null);
   const particleGeometryRef = useRef<THREE.BufferGeometry | null>(null);
   const particleMaterialRef = useRef<THREE.PointsMaterial | null>(null);
+
+  // FPS Counter Refs
+  const fpsDisplayRef = useRef<HTMLDivElement | null>(null);
+  const fpsLastTimestampRef = useRef<number>(0);
+  const frameCountRef = useRef<number>(0);
+  const currentFpsRef = useRef<number>(0);
 
 
   const isValidVector = useCallback((v: {x:number, y:number, z:number} | undefined): v is {x:number, y:number, z:number} => {
     return !!v && isFinite(v.x) && isFinite(v.y) && isFinite(v.z);
   },[]);
 
-  const spawnCollisionParticles = useCallback((collisionPoint: THREE.Vector3, obj1: SimulationObjectInternal, obj2: SimulationObjectInternal) => {
+  const spawnCollisionParticles = useCallback((
+    collisionPoint: THREE.Vector3, 
+    obj1: SimulationObjectInternal | null, // Can be null if it's a generic supernova particle burst
+    obj2: SimulationObjectInternal | null, // Can be null
+    isSupernovaBurst: boolean = false,
+    supernovaEmitter?: SimulationObjectInternal // Star going supernova
+    ) => {
     if (!particleSystemRef.current || activeParticlesRef.current.length >= MAX_PARTICLES) return;
 
-    const numParticlesToSpawn = Math.min(150, Math.max(20, Math.floor((obj1.mass + obj2.mass) * 0.05)));
-    const baseSpeed = 50 + Math.sqrt(obj1.mass + obj2.mass) * 0.5;
+    let numParticlesToSpawn: number;
+    let baseSpeed: number;
+    let particleColors: THREE.Color[];
+    let particleLifetimes: { min: number, max: number };
+
+    if (isSupernovaBurst && supernovaEmitter) {
+        numParticlesToSpawn = SUPERNOVA_PARTICLE_COUNT / 10; // Per burst, will be called multiple times
+        baseSpeed = 200 + Math.random() * 200; // Higher speed for supernova
+        particleColors = [
+            new THREE.Color(0xffffff), // White
+            new THREE.Color(0xffff00), // Yellow
+            new THREE.Color(0xffa500), // Orange
+            new THREE.Color(0xff4500), // OrangeRed
+        ];
+        particleLifetimes = { min: 2.0, max: 4.5 };
+    } else if (obj1 && obj2) { // Standard collision
+        numParticlesToSpawn = Math.min(150, Math.max(20, Math.floor((obj1.mass + obj2.mass) * 0.05)));
+        baseSpeed = 50 + Math.sqrt(obj1.mass + obj2.mass) * 0.5;
+        particleColors = [new THREE.Color(obj1.color), new THREE.Color(obj2.color)];
+        particleLifetimes = { min: 1.5, max: 2.5 };
+    } else {
+        return; // Not enough info to spawn
+    }
+
 
     for (let i = 0; i < numParticlesToSpawn; i++) {
       if (activeParticlesRef.current.length >= MAX_PARTICLES) break;
 
-      const lifetime = 1.5 + Math.random() * 2.5; // seconds
-      const particleColor = Math.random() > 0.5 ? new THREE.Color(obj1.color) : new THREE.Color(obj2.color);
+      const lifetime = particleLifetimes.min + Math.random() * (particleLifetimes.max - particleLifetimes.min);
+      const particleColor = particleColors[Math.floor(Math.random() * particleColors.length)];
       
-      const velocity = new THREE.Vector3(
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2
-      ).normalize().multiplyScalar(baseSpeed + (Math.random() - 0.5) * baseSpeed * 0.5);
+      let velocity: THREE.Vector3;
+      if (isSupernovaBurst && supernovaEmitter) {
+           // Particles emanate from the surface of the expanding star
+            velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 2,
+                (Math.random() - 0.5) * 2,
+                (Math.random() - 0.5) * 2
+            ).normalize().multiplyScalar(baseSpeed + (Math.random() - 0.5) * baseSpeed * 0.7);
+      } else {
+            velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 2,
+                (Math.random() - 0.5) * 2,
+                (Math.random() - 0.5) * 2
+            ).normalize().multiplyScalar(baseSpeed + (Math.random() - 0.5) * baseSpeed * 0.5);
+      }
+
 
       const particle: ActiveParticle = {
-        position: collisionPoint.clone().add(new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).multiplyScalar(obj1.radius + obj2.radius * 0.1)), // slight offset
+        position: collisionPoint.clone().add(new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).multiplyScalar((obj1?.radius || 0) + (obj2?.radius || supernovaEmitter?.radius || 0) * 0.1)),
         velocity: velocity,
         lifetime: lifetime,
         initialLifetime: lifetime,
         color: particleColor,
-        size: 0.3 + Math.random() * 0.4,
+        size: 0.3 + Math.random() * (isSupernovaBurst ? 0.7 : 0.4),
       };
       activeParticlesRef.current.push(particle);
     }
@@ -147,12 +204,17 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     let simObjectsArray = Array.from(simulationObjectsRef.current.values());
     
     simObjectsArray.forEach(obj => {
-      if (!isValidVector(obj.threePosition) || !isValidVector(obj.threeVelocity)) {
+      if (obj.isGoingSupernova || !isValidVector(obj.threePosition) || !isValidVector(obj.threeVelocity)) {
         return;
       }
 
       const totalForce = new THREE.Vector3(0, 0, 0);
-      const forceExerters = simObjectsArray.filter(exerter => exerter.id !== obj.id && exerter.mass > 0 && isValidVector(exerter.threePosition));
+      const forceExerters = simObjectsArray.filter(exerter => 
+          exerter.id !== obj.id && 
+          exerter.mass > 0 && 
+          !exerter.isGoingSupernova && // Supernova objects don't exert force
+          isValidVector(exerter.threePosition)
+      );
 
       if (obj.mass > 0) {
         forceExerters.forEach(exerter => {
@@ -204,7 +266,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         acceleration.copy(testParticleForce); 
       }
 
-
       if (!isValidVector(acceleration)) acceleration.set(0,0,0);
       const deltaVelocity = acceleration.clone().multiplyScalar(dt);
       obj.threeVelocity.add(deltaVelocity);
@@ -231,14 +292,49 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     for (let i = 0; i < currentSimObjectsForCollision.length; i++) {
       const obj1 = currentSimObjectsForCollision[i];
-      if (involvedInMergeThisFrame.has(obj1.id) || !isValidVector(obj1.threePosition)) continue;
+      if (obj1.isGoingSupernova || involvedInMergeThisFrame.has(obj1.id) || !isValidVector(obj1.threePosition)) continue;
 
       for (let j = i + 1; j < currentSimObjectsForCollision.length; j++) {
         const obj2 = currentSimObjectsForCollision[j];
-        if (involvedInMergeThisFrame.has(obj2.id) || !isValidVector(obj2.threePosition)) continue;
+        if (obj2.isGoingSupernova || involvedInMergeThisFrame.has(obj2.id) || !isValidVector(obj2.threePosition)) continue;
 
         const distance = obj1.threePosition.distanceTo(obj2.threePosition);
-        if (distance < obj1.radius + obj2.radius) { 
+        if (distance < obj1.radius + obj2.radius) {
+          
+          const obj1IsStar = obj1.type === 'massive' && (obj1.name.toLowerCase().includes('star') || obj1.name.toLowerCase() === 'sun');
+          const obj2IsStar = obj2.type === 'massive' && (obj2.name.toLowerCase().includes('star') || obj2.name.toLowerCase() === 'sun');
+          
+          let starToNova: SimulationObjectInternal | null = null;
+          let absorbedObject: SimulationObjectInternal | null = null;
+
+          if (obj1IsStar && !obj2IsStar) {
+            starToNova = obj1;
+            absorbedObject = obj2;
+          } else if (obj2IsStar && !obj1IsStar) {
+            starToNova = obj2;
+            absorbedObject = obj1;
+          } // If both are stars, or neither are, standard merge/collision occurs
+
+          if (starToNova && absorbedObject && !starToNova.isGoingSupernova) {
+            starToNova.isGoingSupernova = true;
+            starToNova.supernovaState = {
+              progress: 0,
+              duration: SUPERNOVA_DURATION,
+              originalRadius: starToNova.radius,
+              maxRadius: starToNova.radius * SUPERNOVA_MAX_RADIUS_MULTIPLIER,
+              originalColor: new THREE.Color(starToNova.color),
+              particleSpawnTimer: 0,
+              particleSpawnInterval: 0.05, // Spawn particle bursts every 0.05s of supernova progress
+            };
+            onRemoveObject(absorbedObject.id); // Remove the absorbed object immediately
+            involvedInMergeThisFrame.add(absorbedObject.id);
+            // Small initial particle burst at impact point
+            const collisionPoint = starToNova.threePosition.clone().lerp(absorbedObject.threePosition, starToNova.radius / (starToNova.radius + absorbedObject.radius));
+            spawnCollisionParticles(collisionPoint, starToNova, absorbedObject, false);
+            continue; // Star is now going supernova, skip standard merge for it
+          }
+
+          // Standard merge/collision logic
           let absorber: SimulationObjectInternal;
           let absorbed: SimulationObjectInternal;
 
@@ -253,9 +349,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             absorbed = obj1.id < obj2.id ? obj2 : obj1;
           }
           
-          // Spawn particles BEFORE processing the merge event fully
           const collisionPoint = obj1.threePosition.clone().lerp(obj2.threePosition, obj1.radius / (obj1.radius + obj2.radius));
-          spawnCollisionParticles(collisionPoint, obj1, obj2);
+          spawnCollisionParticles(collisionPoint, obj1, obj2, false);
 
           mergeEvents.push({ absorbedId: absorbed.id, absorberId: absorber.id, massToTransfer: absorbed.mass });
           involvedInMergeThisFrame.add(absorbed.id); 
@@ -269,7 +364,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       });
     }
 
-  }, [isValidVector, onObjectsCollidedAndMerged, spawnCollisionParticles]);
+  }, [isValidVector, onObjectsCollidedAndMerged, spawnCollisionParticles, onRemoveObject]);
 
   const updateParticles = useCallback((dt: number) => {
     if (!particleGeometryRef.current || !particleSystemRef.current) return;
@@ -285,12 +380,8 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
       if (p.lifetime > 0) {
         p.position.addScaledVector(p.velocity, dt);
-        
         positions.push(p.position.x, p.position.y, p.position.z);
-        
-        const alpha = Math.max(0, p.lifetime / p.initialLifetime); // For potential future use with custom shaders
-        colors.push(p.color.r, p.color.g, p.color.b); // PointsMaterial opacity is global, not per-vertex
-        
+        colors.push(p.color.r, p.color.g, p.color.b);
         newActiveParticles.push(p);
       }
     }
@@ -301,22 +392,61 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       particleGeometryRef.current.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
       particleSystemRef.current.visible = true;
     } else {
-      // Clear attributes if no particles to prevent rendering issues with old data
       particleGeometryRef.current.deleteAttribute('position');
       particleGeometryRef.current.deleteAttribute('color');
       particleSystemRef.current.visible = false;
     }
     
-    if (particleGeometryRef.current.attributes.position) {
-        particleGeometryRef.current.attributes.position.needsUpdate = true;
-    }
-    if (particleGeometryRef.current.attributes.color) {
-        particleGeometryRef.current.attributes.color.needsUpdate = true;
-    }
+    if (particleGeometryRef.current.attributes.position) particleGeometryRef.current.attributes.position.needsUpdate = true;
+    if (particleGeometryRef.current.attributes.color) particleGeometryRef.current.attributes.color.needsUpdate = true;
     particleGeometryRef.current.computeBoundingSphere();
-
-
   }, []);
+
+  const updateSupernovae = useCallback((dt: number) => {
+    simulationObjectsRef.current.forEach(simObj => {
+        if (simObj.isGoingSupernova && simObj.supernovaState) {
+            const state = simObj.supernovaState;
+            state.progress += dt / state.duration;
+
+            const mappedObj = objectsMapRef.current.get(simObj.id);
+            if (!mappedObj) return;
+
+            if (state.progress < 1) {
+                // Expansion
+                const scaleFactor = 1 + (state.progress * (SUPERNOVA_MAX_RADIUS_MULTIPLIER -1));
+                mappedObj.mainMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                simObj.radius = state.originalRadius * scaleFactor; // Update sim radius for particle emission if needed
+
+                // Brightening
+                const material = mappedObj.mainMesh.material as THREE.MeshStandardMaterial;
+                material.emissive.lerpColors(state.originalColor, new THREE.Color(0xffffee), state.progress * 1.5); // Lerp to bright yellow/white
+                material.emissiveIntensity = 1 + state.progress * 10; // Significantly increase emissive intensity
+                material.color.set(0xffffff); // Base color to white during nova
+
+                // Particle emission
+                state.particleSpawnTimer += dt;
+                if (state.particleSpawnTimer >= state.particleSpawnInterval) {
+                    state.particleSpawnTimer = 0;
+                    // Spawn particles from the surface of the expanding star
+                    const numPointsOnSphere = 10; // Number of emission points per burst
+                    for(let i=0; i < numPointsOnSphere; i++) {
+                        const randomDirection = new THREE.Vector3(
+                            (Math.random() - 0.5) * 2,
+                            (Math.random() - 0.5) * 2,
+                            (Math.random() - 0.5) * 2
+                        ).normalize();
+                        const emissionPoint = simObj.threePosition.clone().addScaledVector(randomDirection, simObj.radius);
+                        spawnCollisionParticles(emissionPoint, null, null, true, simObj);
+                    }
+                }
+            } else {
+                // Supernova finished
+                onRemoveObject(simObj.id);
+                // The object will be removed from simulationObjectsRef by the main objects prop useEffect
+            }
+        }
+    });
+  }, [onRemoveObject, spawnCollisionParticles]);
 
 
   const updateTrajectories = useCallback(() => {
@@ -324,7 +454,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     const scene = sceneRef.current;
 
     simulationObjectsRef.current.forEach(simObj => {
-      if (!isValidVector(simObj.threePosition)) {
+      if (simObj.isGoingSupernova || !isValidVector(simObj.threePosition)) {
         const line = trajectoriesRef.current.get(simObj.id);
         if (line?.parent) scene.remove(line);
         return;
@@ -371,7 +501,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     if (!gridPlaneRef.current) return;
 
     const objectsWithMassForGrid = Array.from(simulationObjectsRef.current.values())
-      .filter(o => o.mass > 0 && isValidVector(o.threePosition));
+      .filter(o => o.mass > 0 && !o.isGoingSupernova && isValidVector(o.threePosition));
 
     const positions = gridPlaneRef.current.geometry.attributes.position as THREE.BufferAttribute;
     const originalPositions = (gridPlaneRef.current.geometry.userData.originalPositions as THREE.BufferAttribute | undefined);
@@ -474,7 +604,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     scene.background = initialBgColor;
     scene.fog = new THREE.Fog(0x050510, 7000, 25000);
 
-
     const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 50000);
     cameraRef.current = camera;
     camera.position.set(INITIAL_CAMERA_POSITION.x, INITIAL_CAMERA_POSITION.y, INITIAL_CAMERA_POSITION.z);
@@ -512,7 +641,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     scene.add(pointLight);
     pointLightRef.current = pointLight;
 
-
     const planeGeometry = new THREE.PlaneGeometry(GRID_SIZE, GRID_SIZE, GRID_DIVISIONS, GRID_DIVISIONS);
     const planeMaterial = new THREE.MeshStandardMaterial({
       color: new THREE.Color(customizationSettings.gridColor),
@@ -533,20 +661,36 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             (gridPlaneRef.current.geometry.attributes.position as THREE.BufferAttribute).clone();
     }
     
-    // Initialize Particle System
     particleMaterialRef.current = new THREE.PointsMaterial({
-        size: 0.8, // Global particle size
+        size: 0.8, 
         vertexColors: true,
         transparent: true,
         opacity: 0.9,
         sizeAttenuation: true,
-        blending: THREE.AdditiveBlending, // For a brighter particle effect
-        depthWrite: false, // Particles don't obscure each other as much
+        blending: THREE.AdditiveBlending, 
+        depthWrite: false, 
     });
     particleGeometryRef.current = new THREE.BufferGeometry();
     particleSystemRef.current = new THREE.Points(particleGeometryRef.current, particleMaterialRef.current);
-    particleSystemRef.current.visible = false; // Initially hidden
+    particleSystemRef.current.visible = false; 
     scene.add(particleSystemRef.current);
+
+    // FPS Display Element
+    const fpsDiv = document.createElement('div');
+    fpsDiv.style.position = 'absolute';
+    fpsDiv.style.top = '10px';
+    fpsDiv.style.left = '10px';
+    fpsDiv.style.color = 'white';
+    fpsDiv.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    fpsDiv.style.padding = '5px';
+    fpsDiv.style.borderRadius = '3px';
+    fpsDiv.style.fontFamily = 'Arial, sans-serif';
+    fpsDiv.style.fontSize = '12px';
+    fpsDiv.style.zIndex = '100';
+    fpsDiv.textContent = 'FPS: ...';
+    currentMount.appendChild(fpsDiv);
+    fpsDisplayRef.current = fpsDiv;
+    fpsLastTimestampRef.current = performance.now();
 
 
     const handleDoubleClick = (event: MouseEvent) => {
@@ -625,9 +769,14 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       if (currentMount && labelRendererRef.current?.domElement && currentMount.contains(labelRendererRef.current.domElement)) {
           currentMount.removeChild(labelRendererRef.current.domElement);
       }
+      if (fpsDisplayRef.current && currentMount.contains(fpsDisplayRef.current)) {
+        currentMount.removeChild(fpsDisplayRef.current);
+      }
+      fpsDisplayRef.current = null;
+
       rendererRef.current?.dispose();
       
-      sceneRef.current?.clear(); // Clear scene objects
+      sceneRef.current?.clear(); 
       objectsMapRef.current.forEach(mappedObj => {
         mappedObj.mainMesh.geometry.dispose();
         if (mappedObj.mainMesh.material instanceof THREE.Material) mappedObj.mainMesh.material.dispose();
@@ -648,7 +797,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       gridPlaneRef.current?.geometry.dispose();
       (gridPlaneRef.current?.material as THREE.Material)?.dispose();
 
-      // Dispose particle system resources
       particleGeometryRef.current?.dispose();
       particleMaterialRef.current?.dispose();
       if (particleSystemRef.current && sceneRef.current) {
@@ -730,6 +878,19 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         const effectiveDeltaTimeForPhysics = Math.min(rawDeltaTime, 1/30);
         const effectiveDeltaTimeForVisuals = rawDeltaTime; 
 
+        // FPS Calculation
+        frameCountRef.current++;
+        const timeSinceLastFpsUpdate = timestamp - fpsLastTimestampRef.current;
+        if (timeSinceLastFpsUpdate >= 1000) { // Update FPS every second
+            currentFpsRef.current = frameCountRef.current / (timeSinceLastFpsUpdate / 1000);
+            frameCountRef.current = 0;
+            fpsLastTimestampRef.current = timestamp;
+            if (fpsDisplayRef.current) {
+                fpsDisplayRef.current.textContent = `FPS: ${currentFpsRef.current.toFixed(1)}`;
+            }
+        }
+
+
         handleKeyboardCameraMovement(effectiveDeltaTimeForVisuals);
 
         if (isZoomingRef.current && controlsRef.current && cameraRef.current) {
@@ -746,7 +907,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         } else if (controlsRef.current && selectedObjectId && !isZoomingRef.current) {
           const selectedSimObj = simulationObjectsRef.current.get(selectedObjectId);
           if (selectedSimObj && isValidVector(selectedSimObj.threePosition) && !Object.values(keysPressedRef.current).some(pressed => pressed)) { 
-            controlsRef.current.target.lerp(selectedSimObj.threePosition, 0.1); 
+             if (!selectedSimObj.isGoingSupernova) controlsRef.current.target.lerp(selectedSimObj.threePosition, 0.1); 
           }
         }
         controls.update();
@@ -755,8 +916,9 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             const dt = simulationSpeed * effectiveDeltaTimeForPhysics;
             
             updatePhysics(dt);
+            updateSupernovae(dt);
             updateTrajectories();
-            updateParticles(dt); // Update particles
+            updateParticles(dt); 
             deformGrid();
 
             if (onSimulatedTimeDeltaUpdate) {
@@ -767,13 +929,13 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             objectsMapRef.current.forEach((mappedObj, objectId) => {
               const simObjInternal = simulationObjectsRef.current.get(objectId);
               if (simObjInternal && (mappedObj.objectName === 'Black Hole' || mappedObj.objectName === 'Sagittarius A*') && mappedObj.accretionDiskMesh) {
-                mappedObj.accretionDiskMesh.rotation.y += 0.002 * simulationSpeed; 
+                if (!simObjInternal.isGoingSupernova) mappedObj.accretionDiskMesh.rotation.y += 0.002 * simulationSpeed; 
               }
             });
             
             if (onSelectedObjectUpdate && selectedObjectId) {
               const simObjInternal = simulationObjectsRef.current.get(selectedObjectId);
-              if (simObjInternal) {
+              if (simObjInternal && !simObjInternal.isGoingSupernova) { // Don't update if mid-supernova
                 onSelectedObjectUpdate({
                   id: simObjInternal.id,
                   name: simObjInternal.name,
@@ -792,7 +954,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     };
     animate(0); 
     return () => { if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current); };
-  }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid, selectedObjectId, isValidVector, handleKeyboardCameraMovement, onSelectedObjectUpdate, onSimulatedTimeDeltaUpdate, updateParticles]);
+  }, [simulationStatus, simulationSpeed, updatePhysics, updateTrajectories, deformGrid, selectedObjectId, isValidVector, handleKeyboardCameraMovement, onSelectedObjectUpdate, onSimulatedTimeDeltaUpdate, updateParticles, updateSupernovae]);
 
 
   useEffect(() => {
@@ -804,6 +966,22 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
     objects.forEach(objData => {
       currentPropIds.add(objData.id);
       let simObjInternal = newSimMap.get(objData.id);
+
+      if (simObjInternal?.isGoingSupernova && simulationStatus === 'running') {
+        // If object is mid-supernova and simulation is running,
+        // we mostly let the supernova animation control its visual state.
+        // We only update critical things like its existence in newSimMap.
+        if (!newSimMap.has(objData.id)) {
+            // This case should ideally not happen if onRemoveObject is handled correctly post-supernova
+            // but as a fallback, ensure it's in the map if it's in `objects` prop.
+            // However, this might interrupt a supernova if not careful.
+            // For now, assume if it's in `objects` prop, it hasn't been removed by supernova yet.
+            newSimMap.set(objData.id, simObjInternal);
+        }
+        return; // Skip most updates for supernova-ing objects if simulation is running
+      }
+
+
       let mappedObj = objectsMapRef.current.get(objData.id);
       let threeMesh = mappedObj?.mainMesh;
 
@@ -819,6 +997,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           id: objData.id, type: objData.type, mass: propMass,
           threePosition: newThreePosition, threeVelocity: newThreeVelocity,
           radius: propRadius, color: objData.color, name: objData.name,
+          isGoingSupernova: false, // Ensure new objects are not mid-supernova
         };
         newSimMap.set(objData.id, simObjInternal);
 
@@ -884,7 +1063,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         const labelDiv = document.createElement('div');
         labelDiv.className = 'object-name-label';
         labelDiv.textContent = simObjInternal.name;
-        labelDiv.style.display = ''; // Always show labels by default now
+        labelDiv.style.display = ''; 
         const nameLabel = new CSS2DObject(labelDiv);
         nameLabel.position.set(0, simObjInternal.radius * 1.5 + 5, 0); 
         threeMesh.add(nameLabel);
@@ -925,15 +1104,16 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         simObjInternal.type = objData.type;
 
         if (mappedObj.nameLabel) {
-           mappedObj.nameLabel.element.style.display = ''; // Always show labels
+           mappedObj.nameLabel.element.style.display = ''; 
         }
-
 
         if (simObjInternal.radius !== propRadius) {
            simObjInternal.radius = propRadius;
-           threeMesh.geometry.dispose(); 
-           threeMesh.geometry = new THREE.SphereGeometry(simObjInternal.radius, 32, 32);
-           visualReset = true;
+           if (!simObjInternal.isGoingSupernova) { // Don't change geometry if supernova-ing, scale is used
+             threeMesh.geometry.dispose(); 
+             threeMesh.geometry = new THREE.SphereGeometry(simObjInternal.radius, 32, 32);
+             visualReset = true;
+           }
 
            if (mappedObj.nameLabel) { 
                 mappedObj.nameLabel.position.set(0, simObjInternal.radius * 1.5 + 5, 0);
@@ -952,15 +1132,15 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         material.emissiveMap = null; 
                 
         if (simObjInternal.color !== objData.color || material.color.getHexString() !== new THREE.Color(objData.color).getHexString().substring(1)) { 
-             material.color.set(new THREE.Color(objData.color));
+             if (!simObjInternal.isGoingSupernova) material.color.set(new THREE.Color(objData.color));
              visualReset = true; 
         }
         simObjInternal.color = objData.color; 
 
         const dirLightCastsShadowsInCurrentMode = lightingMode === "Realistic Solar" || lightingMode === "Dramatic Edge";
         if (simObjInternal.name === "Sun") {
-            material.emissive.set(new THREE.Color(simObjInternal.color)); 
-            material.emissiveIntensity = 1.0;
+            if (!simObjInternal.isGoingSupernova) material.emissive.set(new THREE.Color(simObjInternal.color)); 
+            if (!simObjInternal.isGoingSupernova) material.emissiveIntensity = 1.0;
             material.metalness = 0.0;
             material.roughness = 0.8;
             threeMesh.castShadow = false;
@@ -968,20 +1148,20 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
         } else if (simObjInternal.name === "Earth" || simObjInternal.name === "Moon" || simObjInternal.name === "Jupiter" || simObjInternal.name === "Ceres" || simObjInternal.name === "Mercury" || simObjInternal.name === "Venus" || simObjInternal.name === "Mars" || simObjInternal.name === "Saturn" || simObjInternal.name === "Uranus" || simObjInternal.name === "Neptune") { 
             material.metalness = 0.1;
             material.roughness = 0.7;
-            material.emissive?.set(0x000000);
+            if (!simObjInternal.isGoingSupernova) material.emissive?.set(0x000000);
             threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode;
             threeMesh.receiveShadow = true;
         } else if (simObjInternal.name === "Black Hole" || simObjInternal.name === "Sagittarius A*") {
-            material.color.set(0x000000); 
+            if (!simObjInternal.isGoingSupernova) material.color.set(0x000000); 
             material.metalness = 0.0;
             material.roughness = 0.5;
-            material.emissive?.set(0x000000);
+            if (!simObjInternal.isGoingSupernova) material.emissive?.set(0x000000);
             threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode;
             threeMesh.receiveShadow = false;
         } else { 
             material.metalness = 0.3;
             material.roughness = 0.6;
-            material.emissive?.set(0x000000);
+            if (!simObjInternal.isGoingSupernova) material.emissive?.set(0x000000);
             threeMesh.castShadow = showShadows && dirLightCastsShadowsInCurrentMode;
             threeMesh.receiveShadow = true;
         }
@@ -1026,8 +1206,16 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             }
         }
 
-        if (simulationStatus !== 'running' || simObjInternal.mass !== propMass) {
-            simObjInternal.mass = propMass; 
+        // If not running, or if mass changed, or if it was supernova-ing and now isn't (via prop change from parent)
+        if (simulationStatus !== 'running' || simObjInternal.mass !== propMass || simObjInternal.isGoingSupernova) {
+            simObjInternal.mass = propMass;
+            if(simObjInternal.isGoingSupernova && !objData.isGoingSupernova) { // Supernova cancelled from parent or finished
+                simObjInternal.isGoingSupernova = false;
+                simObjInternal.supernovaState = undefined;
+                threeMesh.scale.set(1,1,1); // Reset scale
+                // Re-apply original color/emissive if needed based on objData.name
+            }
+
             if (simulationStatus !== 'running' || (simObjInternal.mass !== propMass && propMass !== undefined)) { 
                 if (isValidVector(propPos)) simObjInternal.threePosition.set(propPos.x, propPos.y, propPos.z);
                 if (isValidVector(propVel)) simObjInternal.threeVelocity.set(propVel.x, propVel.y, propVel.z);
@@ -1035,6 +1223,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
                 corePhysicsStateReset = true;
             }
         }
+
 
         if (corePhysicsStateReset || (visualReset && simulationStatus !== 'running')) {
             trajectoryPointsRef.current.set(objData.id, isValidVector(simObjInternal.threePosition) ? [simObjInternal.threePosition.clone()] : []);
@@ -1051,6 +1240,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 
     simulationObjectsRef.current.forEach((simObjInternal, id) => {
       if (!currentPropIds.has(id)) {
+        // This object was removed from the parent `objects` prop
         const mappedObjToRemove = objectsMapRef.current.get(id);
         if (mappedObjToRemove) {
           if (mappedObjToRemove.nameLabel) mappedObjToRemove.mainMesh.remove(mappedObjToRemove.nameLabel); 
@@ -1097,7 +1287,6 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
       trajectoriesRef.current.clear();
       trajectoryPointsRef.current.clear();
 
-      // Clear active particles and their geometry
       activeParticlesRef.current = [];
       if (particleGeometryRef.current) {
         particleGeometryRef.current.deleteAttribute('position');
@@ -1120,12 +1309,15 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
           id: objData.id, type: objData.type, mass: propMass,
           threePosition: threePos, threeVelocity: threeVel,
           radius: propRadius, color: objData.color, name: objData.name, 
+          isGoingSupernova: false, // Reset supernova state
+          supernovaState: undefined,
         });
 
         const mappedObj = objectsMapRef.current.get(objData.id);
         if (mappedObj?.mainMesh) {
           const threeMesh = mappedObj.mainMesh;
           threeMesh.position.copy(threePos);
+          threeMesh.scale.set(1,1,1); // Reset scale
           if ((threeMesh.geometry as THREE.SphereGeometry).parameters.radius !== propRadius) {
             threeMesh.geometry.dispose();
             threeMesh.geometry = new THREE.SphereGeometry(propRadius, 32, 32);
@@ -1135,7 +1327,7 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
             if (mappedObj.nameLabel.element.textContent !== objData.name) {
                  mappedObj.nameLabel.element.textContent = objData.name;
             }
-            mappedObj.nameLabel.element.style.display = ''; // Always show labels
+            mappedObj.nameLabel.element.style.display = ''; 
           }
 
 
@@ -1231,8 +1423,5 @@ const SpaceTimeCanvas: React.FC<SpaceTimeCanvasProps> = ({
 };
 
 export default SpaceTimeCanvas;
-
-
-    
 
     
