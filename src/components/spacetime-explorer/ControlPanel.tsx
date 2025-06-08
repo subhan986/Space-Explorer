@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Play, Pause, SkipForward, Settings2, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass, SaveIcon, BookOpenCheck, FolderOpen, SlidersHorizontal, PaletteIcon, Rewind, FastForward, CalendarDays } from 'lucide-react';
+import { Play, Pause, SkipForward, Settings2, Library, Sun, Orbit, MoonIcon, SigmaSquare, RefreshCw, Paintbrush, Zap, Rocket, Sparkles, Circle, Aperture, Target, DraftingCompass, SaveIcon, BookOpenCheck, FolderOpen, SlidersHorizontal, PaletteIcon, Rewind, FastForward, CalendarDays, BrainCircuit } from 'lucide-react';
 import type { SceneObject, ObjectType, LightingMode } from '@/types/spacetime';
 import { PRESET_SCENARIOS } from '@/lib/preset-scenarios';
 import { REAL_OBJECT_DEFINITIONS } from '@/lib/real-objects';
@@ -43,6 +43,7 @@ interface ControlPanelProps {
   onSaveState: () => void;
   onLoadState: () => void;
   onLoadPreset: (presetKey: string) => void;
+  onGenerateRandomSystem: () => void;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = (props) => {
@@ -50,7 +51,8 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
     objects, selectedObjectId, simulationStatus, simulationSpeed, showTrajectories, trajectoryLength,
     showShadows, lightingMode, currentSimulatedDate, onAddObject, onUpdateObject, onRemoveObject, onSelectObject,
     onSetSimulationStatus, onSetSimulationSpeed, onResetSimulation, onSetShowTrajectories,
-    onSetTrajectoryLength, onSetShowShadows, onSetLightingMode, onSaveState, onLoadState, onLoadPreset
+    onSetTrajectoryLength, onSetShowShadows, onSetLightingMode, onSaveState, onLoadState, onLoadPreset,
+    onGenerateRandomSystem
   } = props;
 
   const [isObjectSheetOpen, setIsObjectSheetOpen] = useState(false);
@@ -233,6 +235,10 @@ const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               ))}
           </SelectContent>
       </Select>
+      
+      <Button size="sm" onClick={onGenerateRandomSystem} className="h-9 flex items-center gap-1.5 bg-accent text-accent-foreground hover:bg-accent/90">
+        <BrainCircuit className="h-4 w-4"/> Generate System
+      </Button>
 
     </div>
   );

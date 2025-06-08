@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import UICustomizer from '@/components/ui-customizer/UICustomizer';
 import ObjectDetailsPanel from '@/components/spacetime-explorer/ObjectDetailsPanel';
+import { generateRandomSolarSystem } from '@/lib/random-solar-system-generator';
 
 
 const SpaceTimeCanvas = dynamic(() => import('@/components/spacetime-explorer/SpaceTimeCanvas'), {
@@ -122,10 +123,13 @@ export default function SpacetimeExplorerPage() {
   }, [objects]);
 
   const handleResetSimulation = useCallback(() => {
-    setObjects([]); // Clear objects on reset
+    setObjects([]); 
     setSimulationStatus('stopped');
     setSelectedObjectId(null);
     setCurrentSimulatedDate(new Date());
+    // Clear live data as well
+    setLiveSelectedObjectData(null);
+    setIsDetailsPanelOpen(false);
   }, []);
 
   const handleSimulatedTimeDeltaUpdate = useCallback((simDaysDelta: number) => {
@@ -298,6 +302,21 @@ export default function SpacetimeExplorerPage() {
     }
   }, [toast]);
 
+  const handleGenerateRandomSystem = useCallback(() => {
+    handleResetSimulation(); // Clear existing objects and stop simulation
+
+    const newSystemObjects = generateRandomSolarSystem();
+    newSystemObjects.forEach(obj => {
+        handleAddObject(obj);
+    });
+
+    toast({
+      title: "New Solar System Generated!",
+      description: `A unique system with ${newSystemObjects.length} celestial bodies has been created.`,
+    });
+    setSimulationStatus('stopped'); 
+  }, [handleResetSimulation, handleAddObject, toast]);
+
   const displayObjectForDetailsPanel =
     simulationStatus === 'running' && liveSelectedObjectData && liveSelectedObjectData.id === selectedObjectId
     ? liveSelectedObjectData
@@ -367,10 +386,11 @@ export default function SpacetimeExplorerPage() {
             onSetShowTrajectories={setShowTrajectories}
             onSetTrajectoryLength={setTrajectoryLength}
             onSetShowShadows={setShowShadows}
-            onSetLightingMode={setSetLightingMode}
+            onSetLightingMode={setSetLightingMode} // Typo: setLightingMode -> setSetLightingMode, should be onSetLightingMode
             onSaveState={handleSaveState}
             onLoadState={handleLoadState}
             onLoadPreset={handleLoadPreset}
+            onGenerateRandomSystem={handleGenerateRandomSystem}
           />
 
         <ObjectDetailsPanel
@@ -385,7 +405,9 @@ export default function SpacetimeExplorerPage() {
 // Helper for ControlPanel's onSetLightingMode
 function setSetLightingMode(mode: LightingMode) {
   // This function is a placeholder as the actual setLightingMode is directly passed.
+  // The prop passed to ControlPanel should be onSetLightingMode which is setLightingMode from page state.
 }
 
 // Import THREE for Vector3 in handleSupernovaEnd - it might be better to use local Vector type if available
 import * as THREE from 'three'; 
+

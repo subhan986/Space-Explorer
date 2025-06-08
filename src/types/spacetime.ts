@@ -17,6 +17,7 @@ export interface BaseObject {
   color: string; // Hex color string
   mass: number; // All objects have a mass, can be 0 for tracer/massless particles
   isManuallyTriggeredSupernova?: boolean; // Flag to manually trigger a supernova
+  hasLife?: boolean; // For randomly generated systems
 }
 
 export interface MassiveObject extends BaseObject {
@@ -52,7 +53,7 @@ export interface SavedSimulationState {
   trajectoryLength: number;
   lightingMode: LightingMode;
   showShadows: boolean;
-  // Future: camera position, selected object ID, etc.
+  simulatedDate?: string; // Changed from Date to string for serialization
 }
 
 // Type for the remnant created after a supernova
