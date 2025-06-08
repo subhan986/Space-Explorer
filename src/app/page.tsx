@@ -325,7 +325,7 @@ export default function SpacetimeExplorerPage() {
   return (
       <div className="flex flex-col h-screen bg-background text-foreground">
         <header className="p-2 border-b border-border flex items-center justify-between gap-2 h-auto sticky top-0 bg-[hsl(var(--background))/0.5] backdrop-blur-md z-20">
-          <div className="flex gap-2">
+          <div className="flex items-center justify-start" style={{ minWidth: '40px' }}>
             <Sheet open={isCustomizerOpen} onOpenChange={setIsCustomizerOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon" className="rounded-full border-2 border-primary hover:bg-primary/10 active:bg-primary/20">
@@ -337,13 +337,17 @@ export default function SpacetimeExplorerPage() {
                 <UICustomizer />
               </SheetContent>
             </Sheet>
-            
           </div>
 
           <h1 className="text-md md:text-lg font-semibold text-foreground flex-1 text-center truncate px-2">
             Spacetime Explorer
           </h1>
-          <div className="w-10 h-10"> </div>
+          
+          <div className="flex items-center justify-end" style={{ minWidth: '40px' }}>
+            <p className="text-xs text-muted-foreground/80 text-right whitespace-nowrap">
+              Made with ❤️ by Subhan Sheraz
+            </p>
+          </div>
         </header>
 
         <main className="flex-1 overflow-hidden relative">
@@ -386,7 +390,7 @@ export default function SpacetimeExplorerPage() {
             onSetShowTrajectories={setShowTrajectories}
             onSetTrajectoryLength={setTrajectoryLength}
             onSetShowShadows={setShowShadows}
-            onSetLightingMode={setSetLightingMode} // Typo: setLightingMode -> setSetLightingMode, should be onSetLightingMode
+            onSetLightingMode={setLightingMode}
             onSaveState={handleSaveState}
             onLoadState={handleLoadState}
             onLoadPreset={handleLoadPreset}
@@ -403,11 +407,9 @@ export default function SpacetimeExplorerPage() {
 }
 
 // Helper for ControlPanel's onSetLightingMode
-function setSetLightingMode(mode: LightingMode) {
-  // This function is a placeholder as the actual setLightingMode is directly passed.
-  // The prop passed to ControlPanel should be onSetLightingMode which is setLightingMode from page state.
-}
+// function setSetLightingMode(mode: LightingMode) { // This function was a placeholder and caused a typo
+// The prop passed to ControlPanel should be onSetLightingMode which is setLightingMode from page state.
+// }
 
 // Import THREE for Vector3 in handleSupernovaEnd - it might be better to use local Vector type if available
 import * as THREE from 'three'; 
-
