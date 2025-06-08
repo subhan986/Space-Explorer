@@ -34,6 +34,32 @@ export const NEPTUNE_ORBIT_RADIUS = 2500;
 export const MOON_ORBIT_RADIUS_AROUND_EARTH = 10; // Reduced from 30 for stability
 
 export const MAX_PARTICLES = 10000; // Maximum number of particles for collision/supernova effects
-export const SUPERNOVA_DURATION = 2.5; // seconds
-export const SUPERNOVA_MAX_RADIUS_MULTIPLIER = 15;
-export const SUPERNOVA_PARTICLE_COUNT = 500; // Number of particles spawned by a supernova event (per burst or total)
+
+// Supernova Constants
+export const SUPERNOVA_DURATION = 3.0; // seconds
+export const SUPERNOVA_MAX_RADIUS_MULTIPLIER = 20; // Star expands to this times its original radius
+export const SUPERNOVA_PARTICLE_COUNT_PER_BURST = 50; // Particles per emission burst
+export const SUPERNOVA_PARTICLE_EMISSION_INTERVAL = 0.03; // Time in seconds between particle bursts
+export const SUPERNOVA_SHOCKWAVE_DURATION = 1.5; // seconds, typically shorter than full supernova
+export const SUPERNOVA_SHOCKWAVE_MAX_RADIUS_FACTOR = 3; // Factor of final supernova expanded radius
+
+// Remnant Creation Constants
+// These are example thresholds and properties, adjust as needed for desired simulation behavior.
+// Masses are based on the *original* star's mass before supernova.
+export const NEUTRON_STAR_MIN_ORIGINAL_MASS = 75000; // e.g., if original star mass was >= this
+export const BLACK_HOLE_MIN_ORIGINAL_MASS = 250000; // e.g., if original star mass was >= this
+
+export const NEUTRON_STAR_COLOR = '#ADD8E6'; // Light Blue / White
+export const NEUTRON_STAR_RADIUS_SIM = 1.5; // Very small visual radius
+export const NEUTRON_STAR_MASS_SIM_FACTOR = 0.3; // e.g., 30% of original star's mass
+
+export const BLACK_HOLE_REMNANT_COLOR = '#000000';
+export const BLACK_HOLE_REMNANT_RADIUS_SIM = 5; // Small, but larger than neutron star
+export const BLACK_HOLE_REMNANT_MASS_SIM_FACTOR = 0.5; // e.g., 50% of original star's mass
+export const REMNANT_VELOCITY_KICK_MAGNITUDE = 5; // Small random velocity after supernova
+
+// Particle colors for supernova debris (representing different elements)
+export const SUPERNOVA_PARTICLE_COLORS = [
+    '#FFFFFF', '#FFFFE0', '#FFD700', '#FFA500', '#FF4500', '#FF6347', '#ADD8E6', '#90EE90'
+    // White, LightYellow (Helium), Gold (Carbon/Oxygen), Orange, OrangeRed, Tomato (Iron), LightBlue (Lighter elements), LightGreen (Silicon/Sulfur)
+];

@@ -5,9 +5,15 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import ControlPanel from '@/components/spacetime-explorer/ControlPanel';
-import type { SceneObject, LightingMode, SavedSimulationState } from '@/types/spacetime';
+import type { SceneObject, LightingMode, SavedSimulationState, SupernovaRemnantType, Vector3 } from '@/types/spacetime';
 import { PRESET_SCENARIOS } from '@/lib/preset-scenarios';
-import { DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH } from '@/lib/constants';
+import {
+    DEFAULT_SIMULATION_SPEED, DEFAULT_TRAJECTORY_LENGTH,
+    NEUTRON_STAR_MIN_ORIGINAL_MASS, BLACK_HOLE_MIN_ORIGINAL_MASS,
+    NEUTRON_STAR_COLOR, NEUTRON_STAR_RADIUS_SIM, NEUTRON_STAR_MASS_SIM_FACTOR,
+    BLACK_HOLE_REMNANT_COLOR, BLACK_HOLE_REMNANT_RADIUS_SIM, BLACK_HOLE_REMNANT_MASS_SIM_FACTOR,
+    REMNANT_VELOCITY_KICK_MAGNITUDE
+} from '@/lib/constants';
 import { Palette } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,24 +60,20 @@ export default function SpacetimeExplorerPage() {
       if (simulationStatus !== 'running') {
         setLiveSelectedObjectData(selectedObjectData);
       }
-      // Panel is opened by handleSelectObject
-    } else if (!selectedObjectId) { // if no object is selected
+    } else if (!selectedObjectId) { 
       setIsDetailsPanelOpen(false);
       setLiveSelectedObjectData(null);
     }
-    // If selectedObjectId changes but selectedObjectData is undefined (e.g. object removed),
-    // also close the panel and clear live data.
     if (selectedObjectId && !selectedObjectData) {
         setIsDetailsPanelOpen(false);
         setLiveSelectedObjectData(null);
-        setSelectedObjectId(null); // Object no longer exists, deselect it
+        setSelectedObjectId(null); 
     }
   }, [selectedObjectId, objects, selectedObjectData, simulationStatus]);
 
 
   const handleDetailsPanelClose = () => {
     setIsDetailsPanelOpen(false);
-    // Do NOT clear selectedObjectId here, so editor can remain open if desired
   };
 
   const handleSelectedObjectUpdate = useCallback((updatedState: SceneObject) => {
@@ -96,7 +98,7 @@ export default function SpacetimeExplorerPage() {
     setObjects(prev => prev.filter(obj => obj.id !== objectId));
     if (selectedObjectId === objectId) {
       setSelectedObjectId(null);
-      setIsDetailsPanelOpen(false); // Close details panel if the selected object is removed
+      setIsDetailsPanelOpen(false); 
       setLiveSelectedObjectData(null);
     }
   }, [selectedObjectId]);
@@ -109,10 +111,9 @@ export default function SpacetimeExplorerPage() {
         setLiveSelectedObjectData(objectData);
         setIsDetailsPanelOpen(true);
       } else {
-        // If object not found (e.g., removed after selection click registered), clear panel
         setIsDetailsPanelOpen(false);
         setLiveSelectedObjectData(null);
-        setSelectedObjectId(null); // Ensure selection is cleared if object is invalid
+        setSelectedObjectId(null); 
       }
     } else {
       setIsDetailsPanelOpen(false);
@@ -122,7 +123,6 @@ export default function SpacetimeExplorerPage() {
 
   const handleResetSimulation = useCallback(() => {
     setSimulationStatus('stopped');
-    // Objects are no longer cleared on reset
     setSelectedObjectId(null);
     setCurrentSimulatedDate(new Date());
   }, []);
@@ -171,6 +171,71 @@ export default function SpacetimeExplorerPage() {
 
   }, [selectedObjectId, toast, objects, simulationStatus]);
 
+  const handleSupernovaEnd = useCallback((
+    originalStarId: string, 
+    _remnantTypeHint: SupernovaRemnantType, // We'll re-evaluate type based on mass
+    finalPosition: Vector3, 
+    finalVelocity: Vector3, 
+    originalMass: number
+  ) => {
+      let remnantType: SupernovaRemnantType;
+      let remnantName: string;
+      let remnantMass: number;
+      let remnantRadius: number;
+      let remnantColor: string;
+
+      if (originalMass >= BLACK_HOLE_MIN_ORIGINAL_MASS) {
+          remnantType = 'black_hole_remnant';
+          remnantName = "Black Hole Remnant";
+          remnantMass = originalMass * BLACK_HOLE_REMNANT_MASS_SIM_FACTOR;
+          remnantRadius = BLACK_HOLE_REMNANT_RADIUS_SIM;
+          remnantColor = BLACK_HOLE_REMNANT_COLOR;
+      } else if (originalMass >= NEUTRON_STAR_MIN_ORIGINAL_MASS) {
+          remnantType = 'neutron_star';
+          remnantName = "Neutron Star";
+          remnantMass = originalMass * NEUTRON_STAR_MASS_SIM_FACTOR;
+          remnantRadius = NEUTRON_STAR_RADIUS_SIM;
+          remnantColor = NEUTRON_STAR_COLOR;
+      } else {
+          // If below threshold for neutron star, maybe it just dissipates?
+          // For now, we'll log and not create a remnant if no criteria met.
+          toast({title: "Supernova Faded", description: "The stellar remnant did not form a compact object."});
+          return; 
+      }
+      
+      const newRemnantId = `remnant_${Date.now()}_${Math.random().toString(36).substring(2,7)}`;
+      
+      // Apply a small random velocity kick
+      const kick = new THREE.Vector3(
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2,
+          (Math.random() - 0.5) * 2
+      ).normalize().multiplyScalar(REMNANT_VELOCITY_KICK_MAGNITUDE);
+
+      const remnantObject: SceneObject = {
+          id: newRemnantId,
+          type: remnantType,
+          name: remnantName,
+          mass: remnantMass,
+          radius: remnantRadius,
+          color: remnantColor,
+          position: finalPosition,
+          velocity: {
+              x: finalVelocity.x + kick.x,
+              y: finalVelocity.y + kick.y,
+              z: finalVelocity.z + kick.z,
+          },
+      };
+      
+      handleAddObject(remnantObject);
+      toast({
+          title: "Supernova Complete!",
+          description: `A ${remnantName} has formed from the stellar core.`
+      });
+
+  }, [handleAddObject, toast]);
+
+
   const handleSaveState = useCallback(() => {
     try {
       const stateToSave: SavedSimulationState = {
@@ -185,7 +250,6 @@ export default function SpacetimeExplorerPage() {
       localStorage.setItem(LOCAL_STORAGE_SAVE_KEY, JSON.stringify(stateToSave));
       toast({ title: "Simulation Saved", description: "Current state saved to local storage." });
     } catch (error) {
-      // console.error("Error saving state:", error);
       toast({ title: "Save Failed", description: "Could not save simulation state.", variant: "destructive" });
     }
   }, [objects, simulationSpeed, showTrajectories, trajectoryLength, lightingMode, showShadows, currentSimulatedDate, toast]);
@@ -209,7 +273,6 @@ export default function SpacetimeExplorerPage() {
         toast({ title: "Load Failed", description: "No saved simulation state found.", variant: "destructive" });
       }
     } catch (error) {
-      // console.error("Error loading state:", error);
       toast({ title: "Load Failed", description: "Could not load simulation state.", variant: "destructive" });
     }
   }, [toast]);
@@ -253,7 +316,7 @@ export default function SpacetimeExplorerPage() {
           <h1 className="text-md md:text-lg font-semibold text-foreground flex-1 text-center truncate px-2">
             Spacetime Explorer
           </h1>
-          <div className="w-10 h-10"> {/* Spacer to balance the left icon buttons */} </div>
+          <div className="w-10 h-10"> </div>
         </header>
 
         <main className="flex-1 overflow-hidden relative">
@@ -271,6 +334,7 @@ export default function SpacetimeExplorerPage() {
               lightingMode={lightingMode}
               onSelectedObjectUpdate={handleSelectedObjectUpdate}
               onSimulatedTimeDeltaUpdate={handleSimulatedTimeDeltaUpdate}
+              onSupernovaEnd={handleSupernovaEnd}
             />
         </main>
 
@@ -312,8 +376,7 @@ export default function SpacetimeExplorerPage() {
 // Helper for ControlPanel's onSetLightingMode
 function setSetLightingMode(mode: LightingMode) {
   // This function is a placeholder as the actual setLightingMode is directly passed.
-  // It's here to satisfy the type if ControlPanel was expecting a function with this exact signature
-  // in a scenario where the state setter itself wasn't directly passable.
-  // However, in the current setup, `setLightingMode` from `useState` is passed directly.
 }
 
+// Import THREE for Vector3 in handleSupernovaEnd - it might be better to use local Vector type if available
+import * as THREE from 'three'; 

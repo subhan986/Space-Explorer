@@ -5,7 +5,7 @@ export interface Vector3 {
   z: number;
 }
 
-export type ObjectType = 'massive' | 'orbiter';
+export type ObjectType = 'massive' | 'orbiter' | 'neutron_star' | 'black_hole_remnant';
 
 export interface BaseObject {
   id: string;
@@ -26,7 +26,15 @@ export interface OrbiterObject extends BaseObject {
   type: 'orbiter';
 }
 
-export type SceneObject = MassiveObject | OrbiterObject;
+export interface NeutronStarObject extends BaseObject {
+    type: 'neutron_star';
+}
+
+export interface BlackHoleRemnantObject extends BaseObject {
+    type: 'black_hole_remnant';
+}
+
+export type SceneObject = MassiveObject | OrbiterObject | NeutronStarObject | BlackHoleRemnantObject;
 
 export interface SimulationConfig {
   simulationSpeed: number;
@@ -45,3 +53,6 @@ export interface SavedSimulationState {
   showShadows: boolean;
   // Future: camera position, selected object ID, etc.
 }
+
+// Type for the remnant created after a supernova
+export type SupernovaRemnantType = 'neutron_star' | 'black_hole_remnant' | 'none'; // 'none' if it completely dissipates (future)
