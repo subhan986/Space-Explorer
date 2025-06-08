@@ -122,6 +122,7 @@ export default function SpacetimeExplorerPage() {
   }, [objects]);
 
   const handleResetSimulation = useCallback(() => {
+    setObjects([]); // Clear objects on reset
     setSimulationStatus('stopped');
     setSelectedObjectId(null);
     setCurrentSimulatedDate(new Date());
@@ -197,15 +198,12 @@ export default function SpacetimeExplorerPage() {
           remnantRadius = NEUTRON_STAR_RADIUS_SIM;
           remnantColor = NEUTRON_STAR_COLOR;
       } else {
-          // If below threshold for neutron star, maybe it just dissipates?
-          // For now, we'll log and not create a remnant if no criteria met.
           toast({title: "Supernova Faded", description: "The stellar remnant did not form a compact object."});
           return; 
       }
       
       const newRemnantId = `remnant_${Date.now()}_${Math.random().toString(36).substring(2,7)}`;
       
-      // Apply a small random velocity kick
       const kick = new THREE.Vector3(
           (Math.random() - 0.5) * 2,
           (Math.random() - 0.5) * 2,
@@ -234,6 +232,16 @@ export default function SpacetimeExplorerPage() {
       });
 
   }, [handleAddObject, toast]);
+
+  const handleManualSupernovaProcessed = useCallback((objectId: string) => {
+    setObjects(prev =>
+      prev.map(obj =>
+        obj.id === objectId
+          ? { ...obj, isManuallyTriggeredSupernova: false } // Reset the flag
+          : obj
+      )
+    );
+  }, []);
 
 
   const handleSaveState = useCallback(() => {
@@ -335,6 +343,7 @@ export default function SpacetimeExplorerPage() {
               onSelectedObjectUpdate={handleSelectedObjectUpdate}
               onSimulatedTimeDeltaUpdate={handleSimulatedTimeDeltaUpdate}
               onSupernovaEnd={handleSupernovaEnd}
+              onManualSupernovaProcessed={handleManualSupernovaProcessed}
             />
         </main>
 

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Zap } from 'lucide-react'; // Added Zap icon
 import ObjectForm from './ObjectForm';
 import type { SceneObject, ObjectType, MassiveObject, Vector3 } from '@/types/spacetime';
 import { useToast } from '@/hooks/use-toast';
@@ -118,9 +118,21 @@ const ObjectManagementPanel: React.FC<ObjectManagementPanelProps> = ({
 
   const handleCancelForm = () => {
     setEditingObjectType(null);
-    onSelectObject(null);
+    onSelectObject(null); // Deselect if cancelling an edit form that was triggered by selection
     setFormInitialData(undefined);
   }
+
+  const handleTriggerSupernova = () => {
+    if (selectedObject) {
+      onUpdateObject({ ...selectedObject, isManuallyTriggeredSupernova: true });
+      toast({ title: "Supernova Triggered!", description: `Attempting to trigger supernova for ${selectedObject.name}.` });
+    }
+  };
+
+  const isSelectedObjectAStar = selectedObject &&
+    selectedObject.type === 'massive' &&
+    (selectedObject.name.toLowerCase().includes('star') || selectedObject.name.toLowerCase() === 'sun');
+
 
   return (
     <div className="flex flex-col h-full bg-card text-card-foreground">
@@ -156,6 +168,16 @@ const ObjectManagementPanel: React.FC<ObjectManagementPanelProps> = ({
                   onCancel={handleCancelForm}
                   submitButtonText={selectedObject ? "Update Object" : "Add Object"}
                 />
+                {isSelectedObjectAStar && !editingObjectType && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={handleTriggerSupernova} 
+                    className="w-full mt-3"
+                  >
+                    <Zap className="mr-2 h-4 w-4" /> Trigger Supernova
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}

@@ -16,6 +16,7 @@ export interface BaseObject {
   radius: number; // For visual representation
   color: string; // Hex color string
   mass: number; // All objects have a mass, can be 0 for tracer/massless particles
+  isManuallyTriggeredSupernova?: boolean; // Flag to manually trigger a supernova
 }
 
 export interface MassiveObject extends BaseObject {
