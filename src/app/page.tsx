@@ -266,6 +266,7 @@ export default function SpacetimeExplorerPage() {
               showTrajectories={showTrajectories}
               trajectoryLength={trajectoryLength}
               onObjectsCollidedAndMerged={handleObjectsCollidedAndMerged}
+              onRemoveObject={handleRemoveObject}
               showShadows={showShadows}
               lightingMode={lightingMode}
               onSelectedObjectUpdate={handleSelectedObjectUpdate}
