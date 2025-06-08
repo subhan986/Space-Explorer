@@ -276,52 +276,61 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
   ISS: {
     name: 'ISS',
     type: 'orbiter',
-    mass: 0.1,
-    radius: 1.5,
+    mass: 0.1, // Very small mass for simulation purposes, effectively a tracer
+    radius: 1.5, // Visual size
     color: '#C0C0C0', // Silver
     description: 'International Space Station, a habitable artificial satellite in low Earth orbit.',
     composition: [{ name: 'Various Metals & Composites', value: '100%', iconColor: '#BEBEBE' }],
-    orbits: 'Earth',
-    realMassKg: '~4.2 × 10⁵ kg',
+    orbits: 'Earth', // This will need specific logic if we want it to orbit Earth in presets
+    realMassKg: '~4.2 × 10⁵ kg', // Approx. 420 metric tons
     isPlanet: false,
   },
   HALLEYS_COMET: {
     name: "Halley's Comet",
     type: 'orbiter',
-    mass: 0.1,
-    radius: 2.0,
-    color: '#ADD8E6', // Light Blue
+    mass: 0.1, // Simulation mass, very small
+    radius: 2.0, // Visual size
+    color: '#ADD8E6', // Light Blue, to represent icy nature
     description: 'A famous short-period comet, visible from Earth every 75–79 years.',
     composition: [
-        { name: 'Water Ice', value: '~80%', iconColor: '#E0FFFF' },
-        { name: 'Carbon Monoxide Ice', value: '~10%', iconColor: '#F0F8FF' },
-        { name: 'Dust & Rock', value: '~10%', iconColor: '#8B4513' },
+        { name: 'Water Ice', value: '~80%', iconColor: '#E0FFFF' }, // LightCyan for water ice
+        { name: 'Carbon Monoxide Ice', value: '~10%', iconColor: '#F0F8FF' }, // AliceBlue for CO ice
+        { name: 'Dust & Rock', value: '~10%', iconColor: '#8B4513' }, // SaddleBrown for dust/rock
     ],
-    basePosition: { x: GRID_SIZE / 3, y: 0, z: GRID_SIZE / 3 },
-    baseVelocity: { x: -20, y: 5, z: -15 },
+    // For a preset, we'd give it a specific initial position and velocity
+    // to simulate its eccentric orbit, rather than a simple 'orbits: Sun'.
+    basePosition: { x: GRID_SIZE / 3, y: 0, z: GRID_SIZE / 3 }, // Example starting far out
+    baseVelocity: { x: -20, y: 5, z: -15 }, // Example velocity for an incoming path
     realMassKg: '~2.2 × 10¹⁴ kg',
     isPlanet: false,
   },
   CERES: {
     name: 'Ceres',
     type: 'orbiter',
-    mass: 50,
-    radius: 4,
+    mass: 50, // Simulation mass
+    radius: 4,  // Visual radius
     color: '#808080', // Gray
     description: 'The largest object in the asteroid belt, classified as a dwarf planet.',
     composition: [
         { name: 'Water Ice', value: 'up to 25% (mantle)', iconColor: '#E0FFFF' },
-        { name: 'Rock & Silicates', value: 'core & crust', iconColor: '#A0522D' },
+        { name: 'Rock & Silicates', value: 'core & crust', iconColor: '#A0522D' }, // Sienna for rock
     ],
-    orbits: 'Sun',
+    orbits: 'Sun', // It's in the asteroid belt orbiting the Sun
     realMassKg: '9.39 × 10²⁰ kg',
+    massEarthUnits: '0.00015 M EARTH',
+    radiusEarthUnits: '0.074 R EARTH', // Approx 473 km radius
+    density: '2.16 g/cm³',
+    avgTemperature: '-105 °C',
+    typicalSpeedKmS: '17.9 km/s',
+    rotationalPeriod: '9.07 hours',
+    orbitalPeriodDisplay: '4.6 years',
     isPlanet: false, // It's a dwarf planet
   },
   BLACK_HOLE: {
-    name: 'Black Hole',
+    name: 'Black Hole', // Generic black hole for presets
     type: 'massive',
-    mass: 500000,
-    radius: 15,
+    mass: 500000, // Very high simulation mass
+    radius: 15,    // Visual radius (event horizon would be smaller relative to mass)
     color: '#000000', // Black
     description: 'A region of spacetime where gravity is so strong that nothing, not even light, can escape.',
     composition: [{ name: 'Singularity', value: 'N/A', iconColor: '#101010' }],
@@ -331,16 +340,16 @@ export const REAL_OBJECT_DEFINITIONS: Record<string, RealObjectDefinition> = {
     isPlanet: false,
   },
   SAGITTARIUS_A_STAR: {
-    name: 'Sagittarius A*',
-    type: 'massive',
-    mass: 5000000,
-    radius: 20,
-    color: '#000000', // Black
-    description: 'The supermassive black hole at the Galactic Center of the Milky Way.',
-    composition: [{ name: 'Singularity', value: 'N/A', iconColor: '#101010' }],
-    basePosition: { x: 0, y: 0, z: 0 },
-    baseVelocity: { x: 0, y: 0, z: 0 },
-    realMassKg: '~8.6 × 10³⁶ kg (4.3 million solar masses)',
-    isPlanet: false,
+      name: 'Sagittarius A*',
+      type: 'massive',
+      mass: 5000000, // Extremely massive for simulation
+      radius: 20, // Visual representation
+      color: '#000000', // Black
+      description: 'The supermassive black hole at the Galactic Center of the Milky Way.',
+      composition: [{ name: 'Singularity', value: 'N/A', iconColor: '#101010'}],
+      basePosition: { x: 0, y: 0, z: 0 },
+      baseVelocity: { x: 0, y: 0, z: 0 },
+      realMassKg: '~8.6 × 10³⁶ kg (4.3 million solar masses)',
+      isPlanet: false,
   },
 };
